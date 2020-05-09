@@ -57,3 +57,5 @@ get_field = function(page, type, id, clean = TRUE, node_only = FALSE, ...) {
   if (node_only) return(out)
   if (clean) html_text_clean(out, ...) else html_text(out)
 }
+
+rand_color = function() sprintf('%06X', sample(16777216L, 1L))

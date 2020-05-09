@@ -2,17 +2,54 @@
 URL = 'https://bugs.r-project.org'
 BUG_URL_FMT = file.path(URL, 'bugzilla', 'show_bug.cgi?id=%d')
 MAX_BUGS_TO_READ = 500L
+OWNER = 'MichaelChirico'
+REPO = 'r-bugs'
 
 source('utils.R')
+library(gh)
+library(data.table)
 
 session = bugzilla_session(URL)
 
-bugDF = read.csv(file.path('data', 'known_bugs.csv'))
-bugDF = subset(bugDF, !mirrored)
+bugDF = fread(file.path('data', 'known_bugs.csv'))[(!mirrored)]
+
+labelDF = if (file.exists(label_file <- file.path('data', 'labels.csv'))) {
+  fread(label_file)
+} else data.table(
+  name = character(), color = character(), n_observed = integer()
+)
+# check if we've seen this label. if not, create the label with a random color.
+#   If so, update its observation count. Once a label reaches 10 times observed,
+#   it gets POSTed to GitHub.
+update_label = function(label) {
+  # this label is known; update its frequency
+  if (label %chin% labelDF$name) {
+    labelDF[.(name = label), on = 'name', n_observed := {
+      if (n_observed == 9L) {
+        gh('POST /repos/:owner/:repo/labels',
+          owner = OWNER, repo = REPO,
+          name = name, color = color
+        )
+      }
+      n_observed + 1L
+    }]
+  } else {
+    labelDF <<- rbind(labelDF,
+      data.table(name = label, color = rand_color(), n_observed = 1L)
+    )
+  }
+}
+validate_label_and_update = function(label, flag) {
+  if (length(label) == 1L && is.character(label))
+    return(if (nzchar(label)) update_label(label) else invisible())
+  stop("Unexpected input at ",flag," : ", toString(x))
+}
 
 # account for the trailing case when fewer than MAX_BUGS_TO_READ are left
 for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
-  BUG_URL = sprintf(BUG_URL_FMT, bugDF$bug_id[bug_i])
+  # ---- 1. EXTRACT BUG DATA FROM PAGE ----
+  bug_id = bugDF$bug_id[bug_i]
+  BUG_URL = sprintf(BUG_URL_FMT, bug_id)
 
   bug_page = jump_to(session, BUG_URL)
 
@@ -25,6 +62,7 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
   comments = bug_page %>% html_nodes(xpath = '//div[@id and contains(@class, "bz_comment")]')
 
   bug = list(
+    id = bug_id,
     summary = get_field(bug_page, 'span', 'short_desc_nonedit_display'),
 
     status = get_field(meta_table, 'span', 'static_bug_status'),
@@ -76,4 +114,19 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
       )
     })
   )
+
+  # ---- 2. UPDATE LABEL DATA ----
+  validate_label_and_update(bug$component)
+  validate_label_and_update(bug$version)
+  validate_label_and_update(bug$hardware)
+  validate_label_and_update(bug$importance)
+
+  # ---- 3. POST TO GITHUB ----
+  gh(
+    "POST /repos/:owner/:repo/issues",
+    owner = OWNER, repo = REPO,
+    title = sprintf("[BUGZILLA #%d] %s", bug$id, bug$summary),
+    body = bug$comment_info[[1L]]$text
+  )
+
 }
