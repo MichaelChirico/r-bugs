@@ -11,10 +11,13 @@ library(data.table)
 
 session = bugzilla_session(URL)
 
-bugDF = fread(file.path('data', 'known_bugs.csv'))[!is.na(github_id)]
+bug_file = file.path('data', 'known_bugs.csv')
+label_file = file.path('data', 'labels.csv')
+
+bugDF = fread(bug_file)[!is.na(github_id)]
 
 # ---- FUNCTIONS FOR WORKING WITH LABELS ----
-labelDF = if (file.exists(label_file <- file.path('data', 'labels.csv'))) {
+labelDF = if (file.exists(label_file)) {
   fread(label_file)
 } else data.table(
   name = character(), color = character(), n_observed = integer()
@@ -46,8 +49,15 @@ validate_label_and_update = function(label, flag) {
 }
 
 # ---- FUNCTIONS FOR DEALING WITH ISSUES ----
-add_github_links = function(bz_ids, ...) {
+# map Bugzilla IDs to GitHub IDs when possible
+add_github_links = function(bz_ids) {
+  gh_ids = bugDF[.(bugzilla_id = bz_ids), on = 'bugzilla_id', github_id]
 
+  fifelse(
+    is.na(gh_ids),
+    paste0('Bugzilla #', bz_ids),
+    sprintf('[Bugzilla #%d](#%d)', bz_ids, gh_ids)
+  )
 }
 BODY_TEMPLATE = "# DESCRIPTION
 
@@ -56,7 +66,15 @@ BODY_TEMPLATE = "# DESCRIPTION
 # METADATA
 
  - Bug Author - %s
- - Creation Time - %s%s%s
+ - Creation Time - %s
+ - Status - %s
+ - Alias - %s
+ - Component - %s
+ - Version - %s
+ - Hardware - %s
+ - Importance - %s
+ - Assignee - %s
+ - URL - %s%s%s
 "
 RELATED_ISSUES_TEMPLATE = "
 
@@ -72,14 +90,8 @@ ATTACHMENT_TEMPLATE = "
  - Link to download patch - %s
  - Timestamp - %s
  - Extra info - %s"
-BODY_PARAMS = c(
-  'description_info', 'attachment_info', 'reported_info', 'modified_info'
-)
 
 build_body = function(params) {
-  if (!all(BODY_PARAMS %chin% names(params)))
-    stop("Missing components required to build issue: ",
-         toString(setdiff(BODY_PARAMS, names(params))))
   force_scalar_character(params$description_info$text, allow_empty = TRUE)
   force_scalar_character(params$description_info$author)
   force_scalar_character(params$description_info$timestamp)
@@ -99,21 +111,21 @@ build_body = function(params) {
   #   monitor-and-update script can handle this after "backfilling" is done
   if (length(params$depends_on) || length(params$blocks)) {
     if (length(params$depends_on)) {
-      gh_ids = bugDF[.(bugzilla_id = params$depends_on), on = 'bugzilla_id', github_id]
-
       depends_txt = paste(
-        '## Depends on',
-        toString(fifelse(
-          is.na(gh_ids),
-          paste0('Bugzilla #', params$depends_on),
-          sprintf('[Bugzilla #%d](#%d)', params$depends_on, gh_ids)
-        ))
+        '## Depends on', toString(add_github_links(params$depends_on)), '\n'
       )
-    }
-  }
+    } else depends_txt = ''
 
-  if (!is.null(description_info$attachment_title) &&
-      !is.na(description_info$attachment_title)) {
+    if (length(params$blocks)) {
+      blocks_txt = paste(
+        '## Blocks', toString(add_github_links(params$blocks)), '\n'
+      )
+    } else blocks_txt = ''
+    related_txt = sprintf(RELATED_ISSUES_TEMPLATE, depends_txt, blocks_txt)
+  } else related_txt = ''
+
+  if (!is.null(params$description_info$attachment_title) &&
+      !is.na(params$description_info$attachment_title)) {
     info = params$attachment_info[[
       which(sapply(params$attachment_info, `[[`, 'comment_anchor') ==
               params$description_info$attachment_title)
@@ -127,7 +139,16 @@ build_body = function(params) {
     params$description_info$text,
     params$description_info$author,
     params$description_info$timestamp,
+    params$status,
+    params$alias,
+    params$component,
+    params$version,
+    params$hardware,
+    params$importance,
+    params$assignee,
+    params$url,
     modified_txt,
+    related_txt,
     attachment_txt
   )
 }
@@ -210,7 +231,7 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
   validate_label_and_update(bug$hardware)
   validate_label_and_update(bug$importance)
 
-  # ---- 3. POST TO GITHUB ----
+  # ---- 3. POST TO GITHUB AND RECORD GITHUB ID----
   gh(
     "POST /repos/:owner/:repo/issues",
     owner = OWNER, repo = REPO,
@@ -219,3 +240,6 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
   )
 
 }
+
+fwrite(bugDF, bug_file)
+fwrite(labelDF, label_file)
