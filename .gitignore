@@ -2,3 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
+
+# contains some (potentially) private info
+template-pages/bug-3.html
