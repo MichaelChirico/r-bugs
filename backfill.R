@@ -47,6 +47,16 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
       gsub('(History)', '', ., fixed = TRUE) %>% clean,
 
     attachment_info = lapply(attachments, function(a) {
+      link = html_node(
+        xpath = './/a[contains(@href, "cgi") and not(contains(@href, "action=edit"))]'
+      )
+      url = html_attr(link, 'href')
+
+      list(
+        title = html_text(link),
+        url = url, id = as.integer(gsub('.*([0-9]+)$', '\\1', url)),
+
+
     })
   )
 
