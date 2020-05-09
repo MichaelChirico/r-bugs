@@ -6,6 +6,7 @@ FULL_BUGLIST_PATH = file.path(
 
 source('utils.R')
 
+check_credentials()
 session = bugzilla_session(URL)
 # returns all 7000+ bug reports! heavy on the r-project.org servers.
 #   !!  avoid doing this step as much as possible, or adjust   !!

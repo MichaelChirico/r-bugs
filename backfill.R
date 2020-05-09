@@ -1,7 +1,7 @@
 # BACK-FILLING BUG REPORTS INCREMENTALLY [[OFFLINE]]
 URL = 'https://bugs.r-project.org'
 BUG_URL_FMT = file.path(URL, 'bugzilla', 'show_bug.cgi?id=%d')
-MAX_BUGS_TO_READ = 500L
+MAX_BUGS_TO_READ = 5L
 OWNER = 'MichaelChirico'
 REPO = 'r-bugs'
 
@@ -9,12 +9,14 @@ source('utils.R')
 library(gh)
 library(data.table)
 
+check_credentials()
 session = bugzilla_session(URL)
 
 bug_file = file.path('data', 'known_bugs.csv')
 label_file = file.path('data', 'labels.csv')
 
-bugDF = fread(bug_file)[!is.na(github_id)]
+# force colClasses for the initialization -- all-NA column is read as logical
+bugDF = fread(bug_file, colClasses = c(github_id = 'integer'))[is.na(github_id)]
 
 # ---- FUNCTIONS FOR WORKING WITH LABELS ----
 labelDF = if (file.exists(label_file)) {
@@ -44,7 +46,7 @@ update_label = function(label) {
   }
 }
 validate_label_and_update = function(label, flag) {
-  force_scalar_charater(label)
+  force_scalar_character(label)
   return(if (nzchar(label)) update_label(label) else invisible())
 }
 
@@ -67,6 +69,7 @@ BODY_TEMPLATE = "%s
 
  - Bug author - %s
  - Creation time - %s
+ - [Bugzilla link](%s)
  - Status - %s
  - Alias - %s
  - Component - %s
@@ -148,6 +151,7 @@ build_body = function(params) {
     params$description_info$text,
     params$description_info$author,
     params$description_info$timestamp,
+    sprintf(BUG_URL_FMT, params$id),
     params$status,
     params$alias,
     params$component,
@@ -166,7 +170,7 @@ build_body = function(params) {
 for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
   # ---- 1. EXTRACT BUG DATA FROM PAGE ----
   bz_id = bugDF$bugzilla_id[bug_i]
-  BUG_URL = sprintf(BUG_URL_FMT, bugzilla_id)
+  BUG_URL = sprintf(BUG_URL_FMT, bz_id)
 
   bug_page = jump_to(session, BUG_URL)
 
@@ -182,7 +186,8 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
       id = html_attr(c, "id"),
       author = html_node_clean(c, './/span[@class="bz_comment_user"]'),
       timestamp = html_node_clean(c, './/span[@class="bz_comment_time"]'),
-      text = html_node(c, xpath = './/pre[@class="bz_comment_text"]') %>% html_text,
+      text = html_node(c, xpath = './/pre[@class="bz_comment_text"]') %>%
+        html_text %>% censor_email,
       # there are two <a>, one to "edit"; the one with name="..." is what we want
       attachment_title = html_node(c, xpath = './/pre[@class="bz_comment_text"]//a[@name]') %>%
         html_attr('name')
@@ -191,7 +196,7 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
 
   bug = list(
     id = bz_id,
-    summary = get_field(bug_page, 'span', 'short_desc_nonedit_display'),
+    summary = get_field(bug_page, 'span', 'short_desc_nonedit_display') %>% censor_email,
 
     status = get_field(meta_table, 'span', 'static_bug_status'),
     alias = get_field(meta_table, 'tr/td', 'field_tablerow_alias'),

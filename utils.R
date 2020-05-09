@@ -1,4 +1,15 @@
 library(rvest)
+check_credentials = function() {
+  creds = Sys.getenv(
+    c('BUGZILLA_USER', 'BUGZILLA_PASSWORD', 'GITHUB_PAT', 'GITHUB_TOKEN'),
+    unset = NA
+  )
+  if (anyNA(creds[1:2])) stop("Must set BUGZILLA_USER nd BUGZILLA_PASSWORD to continue")
+  if (all(is.na(creds[3:4]))) stop("Must set GITHUB_PAT or GITHUB_TOKEN")
+  if (is.na(creds[3L])) Sys.setenv(GITHUB_PAT = creds[4L])
+  return(invisible())
+}
+
 # begin a session in bugzilla & log in
 bugzilla_session = function(URL = 'https://bugs.r-project.org') {
   session = html_session(URL)
@@ -9,12 +20,12 @@ bugzilla_session = function(URL = 'https://bugs.r-project.org') {
     html_form(session)
   )
 
+  u_p = Sys.getenv(c('BUGZILLA_USER', 'BUGZILLA_PASSWORD'))
   # form IDs by manual inspection
-  submit_form(session, set_values(
-    login[[1L]],
-    Bugzilla_login = Sys.getenv('BUGZILLA_USER'),
-    Bugzilla_password = Sys.getenv('BUGZILLA_PASSWORD')
-  ))
+  submit_form(
+    session,
+    set_values(login[[1L]], Bugzilla_login = u_p[1L], Bugzilla_password = u_p[2L])
+  )
 
   return(session)
 }
@@ -66,4 +77,10 @@ force_scalar_character = function(x, allow_empty = TRUE) {
   if (length(x) != 1L) stop("Input must be scalar [length-1]")
   if (!allow_empty && (is.na(x) || !nzchar(x))) stop("Input must be non-missing and non-empty")
   return(invisible())
+}
+
+# this might be over-aggressive, e.g. there are probably some
+#   public-facing emails like the R mailing lists
+censor_email = function(s) {
+  gsub('([a-zA-Z0-9._]+)@([a-zA-Z0-9._]+)', '\\1@<::CENSORED -- SEE ORIGINAL ON BUGZILLA::>', s)
 }
