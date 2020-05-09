@@ -265,10 +265,10 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
   )
 
   # ---- 2. UPDATE LABEL DATA ----
-  validate_label_and_update(bug$component, bz_id)
-  validate_label_and_update(bug$version, bz_id)
-  validate_label_and_update(bug$hardware, bz_id)
-  validate_label_and_update(bug$importance, bz_id)
+  validate_label_and_update(paste0('Component - ', bug$component), bz_id)
+  validate_label_and_update(paste0('Version - ', bug$version), bz_id)
+  validate_label_and_update(paste0('Hardware - ', bug$hardware), bz_id)
+  validate_label_and_update(paste0('Importance - ', bug$importance), bz_id)
 
   # ---- 3. POST TO GITHUB AND RECORD GITHUB ID ----
   gh_call = list(
