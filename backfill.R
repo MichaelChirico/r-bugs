@@ -59,14 +59,14 @@ add_github_links = function(bz_ids) {
     sprintf('[Bugzilla #%d](#%d)', bz_ids, gh_ids)
   )
 }
-BODY_TEMPLATE = "# DESCRIPTION
+BODY_TEMPLATE = "%s
 
-%s
+------------------
 
-# METADATA
+#### METADATA
 
- - Bug Author - %s
- - Creation Time - %s
+ - Bug author - %s
+ - Creation time - %s
  - Status - %s
  - Alias - %s
  - Component - %s
@@ -78,19 +78,34 @@ BODY_TEMPLATE = "# DESCRIPTION
 "
 RELATED_ISSUES_TEMPLATE = "
 
-# RELATED ISSUES
+#### RELATED ISSUES
 
 %s%s"
 ATTACHMENT_TEMPLATE = "
 
-# INCLUDED PATCH
+#### INCLUDED PATCH
 
  - ID - %d
  - Author - %s
  - Link to download patch - %s
  - Timestamp - %s
  - Extra info - %s"
+COMMENT_TEMPLATE = "%s
 
+-----------
+
+#### METADATA
+ - Comment author - %s
+ - Timestamp - %s%s
+"
+
+build_attachment_txt = function(title, info) {
+  if (is.null(title) || is.na(title)) return('')
+  with(
+    info[[which(sapply(info, `[[`, 'comment_anchor') == title)]],
+    sprintf(ATTACHMENT_TEMPLATE, id, author, url, timestamp, extra_info)
+  )
+}
 build_body = function(params) {
   force_scalar_character(params$description_info$text, allow_empty = TRUE)
   force_scalar_character(params$description_info$author)
@@ -124,16 +139,10 @@ build_body = function(params) {
     related_txt = sprintf(RELATED_ISSUES_TEMPLATE, depends_txt, blocks_txt)
   } else related_txt = ''
 
-  if (!is.null(params$description_info$attachment_title) &&
-      !is.na(params$description_info$attachment_title)) {
-    info = params$attachment_info[[
-      which(sapply(params$attachment_info, `[[`, 'comment_anchor') ==
-              params$description_info$attachment_title)
-    ]]
-    attachment_txt = with(info,
-      sprintf(ATTACHMENT_TEMPLATE, id, author, url, timestamp, extra_info)
-    )
-  } else attachment_txt = ''
+  attachment_txt = build_attachment_txt(
+    params$description_info$attachment_title,
+    params$attachment_info
+  )
 
   sprintf(BODY_TEMPLATE,
     params$description_info$text,
@@ -156,7 +165,7 @@ build_body = function(params) {
 # account for the trailing case when fewer than MAX_BUGS_TO_READ are left
 for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
   # ---- 1. EXTRACT BUG DATA FROM PAGE ----
-  bugzilla_id = bugDF$bugzilla_id[bug_i]
+  bz_id = bugDF$bugzilla_id[bug_i]
   BUG_URL = sprintf(BUG_URL_FMT, bugzilla_id)
 
   bug_page = jump_to(session, BUG_URL)
@@ -181,7 +190,7 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
   }
 
   bug = list(
-    id = bugzilla_id,
+    id = bz_id,
     summary = get_field(bug_page, 'span', 'short_desc_nonedit_display'),
 
     status = get_field(meta_table, 'span', 'static_bug_status'),
@@ -231,14 +240,34 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
   validate_label_and_update(bug$hardware)
   validate_label_and_update(bug$importance)
 
-  # ---- 3. POST TO GITHUB AND RECORD GITHUB ID----
-  gh(
-    "POST /repos/:owner/:repo/issues",
+  # ---- 3. POST TO GITHUB AND RECORD GITHUB ID ----
+  gh_call = list(
+    endpoint = "POST /repos/:owner/:repo/issues",
     owner = OWNER, repo = REPO,
     title = sprintf("[BUGZILLA #%d] %s", bug$id, bug$summary),
-    body = bug$comment_info[[1L]]$text
+    body = build_body(bug)
   )
+  labels = labelDF[
+    i = .(name = with(bug, c(component, version, hardware, importance))),
+    on = 'name', name[n_observed >= 10L]
+  ]
+  if (length(labels)) gh_call$labels
+  receipt = do.call(gh, gh_call)
+  this_issue = as.integer(gsub('.*([0-9]+)$', '\\1', receipt$url))
+  bugDF[.(bugzilla_id = bz_id), on = 'bugzilla_id', github_id := this_issue]
 
+  # ---- 4. POST COMMENTS ----
+  for (comment in bug$comment_info) {
+    gh(
+      "POST /repos/:owner/:repo/issues/:issue_number/comments",
+      owner = OWNER, repo = REPO,
+      issue_number = this_issue,
+      body = sprintf(COMMENT_TEMPLATE,
+        comment$text, comment$author, comment$timestamp,
+        build_attachment_txt(comment$attachment_title, bug$attachment_info)
+      )
+    )
+  }
 }
 
 fwrite(bugDF, bug_file)
