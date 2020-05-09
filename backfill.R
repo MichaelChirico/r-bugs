@@ -11,7 +11,7 @@ library(data.table)
 
 session = bugzilla_session(URL)
 
-bugDF = fread(file.path('data', 'known_bugs.csv'))[(!mirrored)]
+bugDF = fread(file.path('data', 'known_bugs.csv'))[!is.na(github_id)]
 
 # ---- FUNCTIONS FOR WORKING WITH LABELS ----
 labelDF = if (file.exists(label_file <- file.path('data', 'labels.csv'))) {
@@ -46,6 +46,9 @@ validate_label_and_update = function(label, flag) {
 }
 
 # ---- FUNCTIONS FOR DEALING WITH ISSUES ----
+add_github_links = function(bz_ids, ...) {
+
+}
 BODY_TEMPLATE = "# DESCRIPTION
 
 %s
@@ -53,8 +56,13 @@ BODY_TEMPLATE = "# DESCRIPTION
 # METADATA
 
  - Bug Author - %s
- - Creation Time - %s%s
+ - Creation Time - %s%s%s
 "
+RELATED_ISSUES_TEMPLATE = "
+
+# RELATED ISSUES
+
+%s%s"
 ATTACHMENT_TEMPLATE = "
 
 # INCLUDED PATCH
@@ -81,6 +89,29 @@ build_body = function(params) {
     modified_txt = paste("\n - Modification time -", params$modified_info)
   } else modified_txt = ""
 
+  # NB: it is not always possible to link the corresponding GitHub issue --
+  #   e.g. Bug 1 on Bugzilla references 15763,15764,15862 -- presumably
+  #   this was added at the Modified date. I suppose it's possible to iterate
+  #   through the bugs in ascending Modified time order as a way to prevent
+  #   "future" bugs from being referenced in "earlier" bug reports, but I'm
+  #   skeptical of investing effort here. I guess this is sufficiently rare
+  #   that it can simply be added manually for less effort, and the
+  #   monitor-and-update script can handle this after "backfilling" is done
+  if (length(params$depends_on) || length(params$blocks)) {
+    if (length(params$depends_on)) {
+      gh_ids = bugDF[.(bugzilla_id = params$depends_on), on = 'bugzilla_id', github_id]
+
+      depends_txt = paste(
+        '## Depends on',
+        toString(fifelse(
+          is.na(gh_ids),
+          paste0('Bugzilla #', params$depends_on),
+          sprintf('[Bugzilla #%d](#%d)', params$depends_on, gh_ids)
+        ))
+      )
+    }
+  }
+
   if (!is.null(description_info$attachment_title) &&
       !is.na(description_info$attachment_title)) {
     info = params$attachment_info[[
@@ -104,8 +135,8 @@ build_body = function(params) {
 # account for the trailing case when fewer than MAX_BUGS_TO_READ are left
 for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
   # ---- 1. EXTRACT BUG DATA FROM PAGE ----
-  bug_id = bugDF$bug_id[bug_i]
-  BUG_URL = sprintf(BUG_URL_FMT, bug_id)
+  bugzilla_id = bugDF$bugzilla_id[bug_i]
+  BUG_URL = sprintf(BUG_URL_FMT, bugzilla_id)
 
   bug_page = jump_to(session, BUG_URL)
 
@@ -129,7 +160,7 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
   }
 
   bug = list(
-    id = bug_id,
+    id = bugzilla_id,
     summary = get_field(bug_page, 'span', 'short_desc_nonedit_display'),
 
     status = get_field(meta_table, 'span', 'static_bug_status'),
