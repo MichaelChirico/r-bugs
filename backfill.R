@@ -13,6 +13,7 @@ session = bugzilla_session(URL)
 
 bugDF = fread(file.path('data', 'known_bugs.csv'))[(!mirrored)]
 
+# ---- FUNCTIONS FOR WORKING WITH LABELS ----
 labelDF = if (file.exists(label_file <- file.path('data', 'labels.csv'))) {
   fread(label_file)
 } else data.table(
@@ -40,9 +41,64 @@ update_label = function(label) {
   }
 }
 validate_label_and_update = function(label, flag) {
-  if (length(label) == 1L && is.character(label))
-    return(if (nzchar(label)) update_label(label) else invisible())
-  stop("Unexpected input at ",flag," : ", toString(x))
+  force_scalar_charater(label)
+  return(if (nzchar(label)) update_label(label) else invisible())
+}
+
+# ---- FUNCTIONS FOR DEALING WITH ISSUES ----
+BODY_TEMPLATE = "# DESCRIPTION
+
+%s
+
+# METADATA
+
+ - Bug Author - %s
+ - Creation Time - %s%s
+"
+ATTACHMENT_TEMPLATE = "
+
+# INCLUDED PATCH
+
+ - ID - %d
+ - Author - %s
+ - Link to download patch - %s
+ - Timestamp - %s
+ - Extra info - %s"
+BODY_PARAMS = c(
+  'description_info', 'attachment_info', 'reported_info', 'modified_info'
+)
+
+build_body = function(params) {
+  if (!all(BODY_PARAMS %chin% names(params)))
+    stop("Missing components required to build issue: ",
+         toString(setdiff(BODY_PARAMS, names(params))))
+  force_scalar_character(params$description_info$text, allow_empty = TRUE)
+  force_scalar_character(params$description_info$author)
+  force_scalar_character(params$description_info$timestamp)
+  force_scalar_character(params$modified_info)
+
+  if (!with(params, grepl(modified_info, reported_info, fixed = TRUE))) {
+    modified_txt = paste("\n - Modification time -", params$modified_info)
+  } else modified_txt = ""
+
+  if (!is.null(description_info$attachment_title) &&
+      !is.na(description_info$attachment_title)) {
+    info = params$attachment_info[[
+      which(sapply(params$attachment_info, `[[`, 'comment_anchor') ==
+              params$description_info$attachment_title)
+    ]]
+    attachment_txt = with(info,
+      sprintf(ATTACHMENT_TEMPLATE, id, author, url, timestamp, extra_info)
+    )
+  } else attachment_txt = ''
+
+  sprintf(BODY_TEMPLATE,
+    params$description_info$text,
+    params$description_info$author,
+    params$description_info$timestamp,
+    modified_txt,
+    attachment_txt
+  )
 }
 
 # account for the trailing case when fewer than MAX_BUGS_TO_READ are left
@@ -60,6 +116,17 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
   attachments = bug_page %>% html_node(xpath = '//table[@id="attachment_table"]') %>%
     html_nodes(xpath = './/tr[number(substring-after(@id, "a")) > 0]')
   comments = bug_page %>% html_nodes(xpath = '//div[@id and contains(@class, "bz_comment")]')
+  get_comment_info = function(c) {
+    list(
+      id = html_attr(c, "id"),
+      author = html_node_clean(c, './/span[@class="bz_comment_user"]'),
+      timestamp = html_node_clean(c, './/span[@class="bz_comment_time"]'),
+      text = html_node(c, xpath = './/pre[@class="bz_comment_text"]') %>% html_text,
+      # there are two <a>, one to "edit"; the one with name="..." is what we want
+      attachment_title = html_node(c, xpath = './/pre[@class="bz_comment_text"]//a[@name]') %>%
+        html_attr('name')
+    )
+  }
 
   bug = list(
     id = bug_id,
@@ -87,7 +154,7 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
       link = html_node(
         a, xpath = './/a[contains(@href, "cgi") and not(contains(@href, "action=edit"))]'
       )
-      url = html_attr(link, 'href')
+      url = file.path(URL, 'bugzilla', html_attr(link, 'href'))
 
       meta = html_node(a, xpath = './/span[@class="bz_attach_extra_info"]')
       list(
@@ -102,17 +169,8 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
       )
     }),
 
-    comment_info = lapply(comments, function(c) {
-      list(
-        id = html_attr(c, "id"),
-        author = html_node_clean(c, './/span[@class="bz_comment_user"]'),
-        timestamp = html_node_clean(c, './/span[@class="bz_comment_time"]'),
-        text = html_node(c, xpath = './/pre[@class="bz_comment_text"]') %>% html_text,
-        # there are two <a>, one to "edit"; the one with name="..." is what we want
-        attachment_title = html_node(c, xpath = './/pre[@class="bz_comment_text"]//a[@name]') %>%
-          html_attr('name')
-      )
-    })
+    description_info = get_comment_info(comments[[1L]]),
+    comment_info = lapply(comments[-1L], get_comment_info)
   )
 
   # ---- 2. UPDATE LABEL DATA ----

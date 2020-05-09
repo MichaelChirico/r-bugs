@@ -58,4 +58,12 @@ get_field = function(page, type, id, clean = TRUE, node_only = FALSE, ...) {
   if (clean) html_text_clean(out, ...) else html_text(out)
 }
 
+# random hex color (16777216 is 256^3=16^6)
 rand_color = function() sprintf('%06X', sample(16777216L, 1L))
+
+force_scalar_character = function(x, allow_empty = TRUE) {
+  if (!is.character(x)) stop("Input must be character")
+  if (length(x) != 1L) stop("Input must be scalar [length-1]")
+  if (!allow_empty && (is.na(x) || !nzchar(x))) stop("Input must be non-missing and non-empty")
+  return(invisible())
+}
