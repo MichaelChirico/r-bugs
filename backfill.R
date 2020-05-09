@@ -22,32 +22,57 @@ bugDF = fread(bug_file, colClasses = c(github_id = 'integer'))[is.na(github_id)]
 labelDF = if (file.exists(label_file)) {
   fread(label_file)
 } else data.table(
-  name = character(), color = character(), n_observed = integer()
+  name = character(), color = character(),
+  n_observed = integer(), seed_issues = character()
 )
 # check if we've seen this label. if not, create the label with a random color.
 #   If so, update its observation count. Once a label reaches 10 times observed,
 #   it gets POSTed to GitHub.
-update_label = function(label) {
+update_label = function(label, bz_id) {
   # this label is known; update its frequency
   if (label %chin% labelDF$name) {
-    labelDF[.(name = label), on = 'name', n_observed := {
-      if (n_observed == 9L) {
-        gh('POST /repos/:owner/:repo/labels',
-          owner = OWNER, repo = REPO,
-          name = name, color = color
-        )
+    labelDF[.(name = label), on = 'name', c('n_observed', 'seed_issues') := {
+      if (n_observed < 10L) {
+        if (n_observed < 9L) {
+          seed_issues = paste0(seed_issues, ',', bz_id)
+        } else {
+          # PROBLEM -- the first 9 instances of this label won't have it
+          #  assigned to the
+          gh('POST /repos/:owner/:repo/labels',
+             owner = OWNER, repo = REPO,
+             name = name, color = color
+          )
+          for (seed_issue in strsplit(seed_issues, ',')[[1L]]) {
+            gh_id = bugDF[.(bugzilla_id = as.integer(seed_issue)), on = 'bugzilla_id', github_id]
+            if (is.na(gh_id)) next
+            # PATCH will overwrite, so we need to read current issues first & append
+            issue_data = gh(
+              "GET /repos/:owner/:repo/issues/:issue_number",
+              owner = OWNER, repo = REPO,
+              issue_number = gh_id
+            )
+
+            gh(
+              "PATCH /repos/:owner/:repo/issues/:issue_number",
+              owner = OWNER, repo = REPO,
+              issue_number = gh_id,
+              labels = c(sapply(issue_data$labels, `[[`, 'name'), label)
+            )
+          }
+        }
       }
-      n_observed + 1L
+      .(n_observed + 1L, seed_issues)
     }]
   } else {
     labelDF <<- rbind(labelDF,
-      data.table(name = label, color = rand_color(), n_observed = 1L)
+      data.table(name = label, color = rand_color(),
+                 n_observed = 1L, seed_issues = as.character(bz_id))
     )
   }
 }
-validate_label_and_update = function(label, flag) {
+validate_label_and_update = function(label, bz_id, flag) {
   force_scalar_character(label)
-  return(if (nzchar(label)) update_label(label) else invisible())
+  return(if (nzchar(label)) update_label(label, bz_id) else invisible())
 }
 
 # ---- FUNCTIONS FOR DEALING WITH ISSUES ----
@@ -240,10 +265,10 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
   )
 
   # ---- 2. UPDATE LABEL DATA ----
-  validate_label_and_update(bug$component)
-  validate_label_and_update(bug$version)
-  validate_label_and_update(bug$hardware)
-  validate_label_and_update(bug$importance)
+  validate_label_and_update(bug$component, bz_id)
+  validate_label_and_update(bug$version, bz_id)
+  validate_label_and_update(bug$hardware, bz_id)
+  validate_label_and_update(bug$importance, bz_id)
 
   # ---- 3. POST TO GITHUB AND RECORD GITHUB ID ----
   gh_call = list(
@@ -271,6 +296,15 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
         comment$text, comment$author, comment$timestamp,
         build_attachment_txt(comment$attachment_title, bug$attachment_info)
       )
+    )
+  }
+
+  # ---- 5. CLOSE CLOSED ISSUES ----
+  if (grepl('CLOSED', bug$status)) {
+    gh(
+      "PATCH /repos/:owner/:repo/issues/:issue_number",
+      owner = OWNER, repo = REPO,
+      issue_number = this_issue, state = 'closed'
     )
   }
 }
