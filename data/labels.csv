@@ -1,0 +1,24 @@
+name,color,n_observed,seed_issues
+Misc,2DCDC1,1,1
+R 2.y.z,38B3B4,1,1
+PowerPC Mac OS X v10.4,964C9B,1,1
+P5 normal,61F3DD,50,"1,3,4,5,7,8,9,10,12"
+Language,F20169,20,"3,5,9,10,13,15,24,36,40"
+old,98E363,49,"3,4,5,7,8,9,10,12,13"
+All All,91EC49,25,"3,18,19,21,22,24,25,26,37"
+Models,5D16C3,4,"4,8,14,22"
+All Solaris,E9672B,8,"4,5,9,10,14,36,40,63"
+System-specific,5BE8FF,3,"7,25,39"
+All Other,4C34BB,2,"7,8"
+I/O,AA6D44,2,"12,34"
+All Linux-Fedora,712E8C,3,"12,13,58"
+All Linux-Debian,37D0C1,2,"15,34"
+Documentation,E50E71,3,"18,19,52"
+Startup,0A4249,1,21
+Analyses,F54D01,1,26
+Low-level,D7D2EE,2,"37,62"
+Graphics,A9DC8A,8,"38,41,42,45,56,61,65,66"
+All Linux,301151,4,"43,52,54,65"
+Windows GUI / Window specific,4C8435,4,"46,47,57,59"
+ix86 (32-bit) Windows 32-bit,D37A19,5,"47,57,59,62,66"
+Installation,D0821D,1,58

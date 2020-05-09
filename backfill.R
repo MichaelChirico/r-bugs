@@ -1,7 +1,7 @@
 # BACK-FILLING BUG REPORTS INCREMENTALLY [[OFFLINE]]
 URL = 'https://bugs.r-project.org'
 BUG_URL_FMT = file.path(URL, 'bugzilla', 'show_bug.cgi?id=%d')
-MAX_BUGS_TO_READ = 5L
+MAX_BUGS_TO_READ = 50L
 OWNER = 'MichaelChirico'
 REPO = 'r-bugs'
 
@@ -283,7 +283,7 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
   ]
   if (length(labels)) gh_call$labels
   receipt = do.call(gh, gh_call)
-  this_issue = as.integer(gsub('.*([0-9]+)$', '\\1', receipt$url))
+  this_issue = as.integer(gsub('.*/([0-9]+)$', '\\1', receipt$url))
   bugDF[.(bugzilla_id = bz_id), on = 'bugzilla_id', github_id := this_issue]
 
   # ---- 4. POST COMMENTS ----
