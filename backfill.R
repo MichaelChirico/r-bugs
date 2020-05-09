@@ -22,6 +22,7 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
   time_table = bug_page %>% html_node(xpath = '//td[@id="bz_show_bug_column_2"]')
   attachments = bug_page %>% html_node(xpath = '//table[@id="attachment_table"]') %>%
     html_nodes(xpath = './/tr[number(substring-after(@id, "a")) > 0]')
+  comments = bug_page %>% html_nodes(xpath = '//div[@id and contains(@class, "bz_comment")]')
 
   bug = list(
     summary = get_field(bug_page, 'span', 'short_desc_nonedit_display'),
@@ -35,12 +36,10 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
     importance = get_field(meta_table, 'tr/td', 'field_tablerow_importance'),
     assignee = get_field(meta_table, 'tr/td', 'field_tablerow_assigned_to'),
     url = get_field(meta_table, 'span', 'bz_url_input_area'),
-    depends_on = meta_table %>%
-      html_nodes(xpath = './/tr[@id="field_tablerow_dependson"]/td/a') %>%
-      html_text_clean %>% as.integer,
-    blocks = meta_table %>%
-      html_nodes(xpath = './/tr/th[@id="field_label_blocked"]/parent::node()/td/a') %>%
-      html_text_clean %>% as.integer,
+    depends_on = get_field(meta_table, 'tr/td', 'field_tablerow_dependson', node_only = TRUE) %>%
+      html_nodes_clean(xpath = './a') %>% as.integer,
+    blocks = html_node(meta_table, xpath = './/tr/th[@id="field_label_blocked"]') %>%
+      html_nodes_clean(xpath = './parent::node()/td/a') %>% as.integer,
 
     reported_info = get_field(time_table, 'tr/td', 'field_tablerow_reported'),
     modified_info = get_field(time_table, 'tr/td', 'field_tablerow_modified', clean = FALSE) %>%
@@ -48,16 +47,33 @@ for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
 
     attachment_info = lapply(attachments, function(a) {
       link = html_node(
-        xpath = './/a[contains(@href, "cgi") and not(contains(@href, "action=edit"))]'
+        a, xpath = './/a[contains(@href, "cgi") and not(contains(@href, "action=edit"))]'
       )
       url = html_attr(link, 'href')
 
+      meta = html_node(a, xpath = './/span[@class="bz_attach_extra_info"]')
       list(
-        title = html_text(link),
+        title = html_text_clean(link),
         url = url, id = as.integer(gsub('.*([0-9]+)$', '\\1', url)),
+        author = html_node_clean(meta, './span[@class="vcard"]'),
+        timestamp = html_node_clean(meta, './a[contains(@title, "Go to")]'),
+        comment_anchor = html_node(meta, xpath = './a[contains(@title, "Go to")]') %>%
+          html_attr('href') %>% gsub('^#', '', . ),
+        # text is between parent node & first tag <br>
+        extra_info = html_node_clean(meta, './br/preceding-sibling::text()')
+      )
+    }),
 
-
+    comment_info = lapply(comments, function(c) {
+      list(
+        id = html_attr(c, "id"),
+        author = html_node_clean(c, './/span[@class="bz_comment_user"]'),
+        timestamp = html_node_clean(c, './/span[@class="bz_comment_time"]'),
+        text = html_node(c, xpath = './/pre[@class="bz_comment_text"]') %>% html_text,
+        # there are two <a>, one to "edit"; the one with name="..." is what we want
+        attachment_title = html_node(c, xpath = './/pre[@class="bz_comment_text"]//a[@name]') %>%
+          html_attr('name')
+      )
     })
   )
-
 }

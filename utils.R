@@ -33,11 +33,20 @@ html_text_clean = function(x, replace_newline = TRUE, replace_nbsp = TRUE, colla
   return(clean(html_text(x), replace_newline, replace_nbsp, collapse_ws))
 }
 
+# wrapper for html_node %>% html_text_clean
+html_node_clean = function(x, xpath, ...)
+  html_text_clean(html_node(x, xpath = xpath), ...)
+
+# ditto, for html_nodes
+html_nodes_clean = function(x, xpath, ...)
+  html_text_clean(html_nodes(x, xpath = xpath), ...)
+
+
 # common extractions:
 #   <tr id='...'><td>desired text</td></tr>
 #   <span|td id='...'>desired test</span|td>
 # .// (not //) to be sure we are only search "below" page on the tree
-get_field = function(page, type, id, clean = TRUE, ...) {
+get_field = function(page, type, id, clean = TRUE, node_only = FALSE, ...) {
   out = switch(type,
     span = , td =
       html_node(page, xpath = sprintf('.//%s[@id="%s"]', type, id)),
@@ -45,5 +54,6 @@ get_field = function(page, type, id, clean = TRUE, ...) {
       html_node(page, xpath = sprintf('.//tr[@id="%s"]/td', id)),
     stop("Unrecognized 'type'")
   )
+  if (node_only) return(out)
   if (clean) html_text_clean(out, ...) else html_text(out)
 }
