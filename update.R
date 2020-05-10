@@ -1,8 +1,6 @@
 # INCREMENTAL UPDATES OF ISSUES [[ONLINE]]
 URL = 'https://bugs.r-project.org'
 BUG_URL_FMT = file.path(URL, 'bugzilla', 'show_bug.cgi?id=%d')
-OWNER = 'MichaelChirico'
-REPO = 'r-bugs'
 
 source('utils.R')
 library(data.table)

@@ -6,9 +6,6 @@ library(gh)
 # random hex color (16777216 is 256^3=16^6)
 rand_color = function() sprintf('%06X', sample(16777216L, 1L))
 
-# quick-and-dirty proper capitalization
-to_proper = function(x) gsub('\\b(.)', '\\U\\1', x, perl = TRUE)
-
 force_scalar_character = function(x, allow_empty = TRUE) {
   if (!is.character(x)) stop("Input must be character")
   if (length(x) != 1L) stop("Input must be scalar [length-1]")
@@ -112,7 +109,7 @@ get_comment_info = function(c) {
     id = html_attr(c, "id"),
     author = html_node_clean(c, './/span[@class="bz_comment_user"]'),
     timestamp = html_node_clean(c, './/span[@class="bz_comment_time"]'),
-    text = censor_email(html_text(html_node(c, xpath = './/pre[@class="bz_comment_text"]'))),
+    text = censor(html_text(html_node(c, xpath = './/pre[@class="bz_comment_text"]'))),
     # there are two <a>, one to "edit"; the one with name="..." is what we want
     attachment_title = html_text(
       html_node(c, xpath = './/pre[@class="bz_comment_text"]//a/@name')
@@ -133,7 +130,7 @@ get_bug_data = function(bug_page) {
 
   bug = list(
     id = bz_id,
-    summary = censor_email(get_field(bug_page, 'span', 'short_desc_nonedit_display')),
+    summary = censor(get_field(bug_page, 'span', 'short_desc_nonedit_display')),
 
     status = get_field(meta_table, 'span', 'static_bug_status'),
     alias = get_field(meta_table, 'tr/td', 'field_tablerow_alias'),
@@ -172,6 +169,34 @@ get_bug_data = function(bug_page) {
 censor_email = function(s) {
   gsub('([a-zA-Z0-9._]+)@([a-zA-Z0-9._]+)', '\\1@<::CENSORED -- SEE ORIGINAL ON BUGZILLA::>', s)
 }
+
+# comments copied from e-mails might include the e-mail signature [and hence phone #]
+#   attempts:
+#     - https://stackoverflow.com/a/20971688/3576984 <matches way too much>
+#     - [-0-9() ]{7,} <matches 7+ spaces in a row>
+#     - [+0-9()][-0-9() ]{5,}[0-9()] <matches timestamps like 1998-08-08 03>
+#     - [+][0-9]{1,3} [0-9]{3,8}(?: [0-9]{3,8})? <misses (+XX) XXXXXXXX in BZ#65>
+#     - \\(?[+][0-9]{1,3}\\)? [0-9]{3,8}(?: [0-9]{3,8})? <misses (+XX X)   XXX XX XX in BZ#52>
+#  generally this appears to be a tough problem. approach now is to look for the
+#    call-out phrases (phone/tel/fax) and then censor subsequent text -- works
+#    under the assumption that these phone #s are only showing up in e=mail signatures,
+#    so that hopefully just axing everything below doesn't block content.
+#  a close alternative -- simply censoring the lines with these anchors -- fails to catch
+#    constructions like that in BZ#3, where two numbers are coupled over two lines
+censor_phone = function(x) {
+  lines = strsplit(x, '\n', fixed = TRUE)[[1L]]
+  for (ii in seq_along(lines)) {
+    if (grepl('\\b(?:tel|fax|phone|ph)\\b', lines[ii], ignore.case = TRUE)) {
+      lines[ii] = '<CENSORING FROM DETECTED PHONE NUMBER ONWARDS; SEE BUGZILLA>'
+      cat('\n*** REMOVING DETECTED PHONE NUMBER & REMAINDER ***\n')
+      cat(tail(lines, 1L-ii), sep = '\n')
+      lines = head(lines, ii)
+    }
+  }
+  paste(lines, collapse = '\n')
+}
+
+censor = function(x) censor_phone(censor_email(x))
 
 # ---- MIRRORING UTILITIES ----
 # check if we've seen this label. if not, create the label with a random color.
@@ -346,6 +371,10 @@ build_body = function(params) {
 }
 
 # ---- GITHUB UTILITIES
+OWNER = 'MichaelChirico'
+REPO = 'r-bugs'
+TAG_FIELDS = c('Component', 'Version', 'Hardware', 'Importance')
+
 create_issue = function(params) {
   gh_call = list(
     endpoint = "POST /repos/:owner/:repo/issues",
@@ -354,7 +383,7 @@ create_issue = function(params) {
     body = build_body(params)
   )
   labels = labelDF[
-    i = .(name = with(params, c(component, version, hardware, importance))),
+    i = .(name = paste(TAG_FIELDS, '-', unlist(params[tolower(TAG_FIELDS)]))),
     on = 'name', name[n_observed >= 10L]
   ]
   if (length(labels)) gh_call$labels = labels

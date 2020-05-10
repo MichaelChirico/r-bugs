@@ -22,3 +22,13 @@ All Linux,301151,4,"43,52,54,65"
 Windows GUI / Window specific,4C8435,4,"46,47,57,59"
 ix86 (32-bit) Windows 32-bit,D37A19,5,"47,57,59,62,66"
 Installation,D0821D,1,58
+Component - Graphics,61CB0C,4,"69,79,86,93"
+Version - old,F00228,20,"69,70,71,72,73,75,77,78,79"
+Hardware - All All,22EE85,11,"69,72,75,78,79,82,83,86,90"
+Importance - P5 normal,91C705,20,"69,70,71,72,73,75,77,78,79"
+Component - Language,34F6C3,11,"70,72,73,77,78,82,84,85,89"
+Hardware - All Linux,0590E7,4,"70,71,85,91"
+Component - System-specific,8724E4,3,"71,83,92"
+Hardware - All Solaris,0BB8A9,5,"73,77,84,89,92"
+Component - Documentation,8D4158,1,75
+Component - Misc,D92CDB,1,91

@@ -1,9 +1,7 @@
 # BACK-FILLING BUG REPORTS INCREMENTALLY [[OFFLINE]]
 URL = 'https://bugs.r-project.org'
 BUG_URL_FMT = file.path(URL, 'bugzilla', 'show_bug.cgi?id=%d')
-MAX_BUGS_TO_READ = 50L
-OWNER = 'MichaelChirico'
-REPO = 'r-bugs'
+MAX_BUGS_TO_READ = 10L
 
 source('utils.R')
 library(gh)
@@ -29,13 +27,11 @@ labelDF = if (file.exists(label_file)) {
 for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
   # ---- 1. EXTRACT BUG DATA FROM PAGE ----
   bz_id = bugDF$bugzilla_id[bug_i]
-  BUG_URL = sprintf(BUG_URL_FMT, bz_id)
-
-  bug = get_bug_data(jump_to(session, BUG_URL))
+  bug = get_bug_data(jump_to(session, sprintf(BUG_URL_FMT, bz_id)))
 
   # ---- 2. UPDATE LABEL DATA ----
-  for (tag in c('component', 'version', 'hardware', 'importance')) {
-    validate_label_and_update(paste(to_proper(tag), '-', bug[[tag]]), bz_id)
+  for (tag in TAG_FIELDS) {
+    validate_label_and_update(paste(tag, '-', bug[[tolower(tag)]]), bz_id)
   }
 
   # ---- 3. POST TO GITHUB AND RECORD GITHUB ID ----

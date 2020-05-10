@@ -2,6 +2,11 @@
 .Rhistory
 .RData
 .Ruserdata
+# secrets
+.Renviron
 
-# contains some (potentially) private info
+# contain some (potentially) private info
 template-pages/bug-3.html
+template-pages/bug-52.html
+template-pages/bug-65.html
+
