@@ -2,7 +2,7 @@ library(rvest)
 library(data.table)
 library(gh)
 
-# --- MISCELLANEOUS UTILITIES ----
+# ---- MISCELLANEOUS UTILITIES ----
 # random hex color (16777216 is 256^3=16^6)
 rand_color = function() sprintf('%06X', sample(16777216L, 1L))
 
@@ -12,6 +12,50 @@ force_scalar_character = function(x, allow_empty = TRUE) {
   if (!allow_empty && (is.na(x) || !nzchar(x))) stop("Input must be non-missing and non-empty")
   return(invisible())
 }
+
+# ---- TEXT FORMATTING UTILITIES ----
+# strip several kinds of whitespace
+clean_ws = function(x, replace_newline = TRUE, replace_nbsp = TRUE, collapse_ws = TRUE) {
+  text = trimws(x)
+  if (replace_newline) text = gsub('\n', ' ', text, fixed = TRUE)
+  if (replace_nbsp) text = gsub(intToUtf8(160L), ' ', text, fixed = TRUE)
+  if (collapse_ws) text = gsub('\\s{2,}', ' ', text)
+  return(text)
+}
+
+# this might be over-aggressive, e.g. there are probably some
+#   public-facing emails like the R mailing lists
+censor_email = function(s) {
+  gsub('([a-zA-Z0-9._]+)@([a-zA-Z0-9._]+)', '\\1@<::CENSORED -- SEE ORIGINAL ON BUGZILLA::>', s)
+}
+
+# comments copied from e-mails might include the e-mail signature [and hence phone #]
+#   attempts:
+#     - https://stackoverflow.com/a/20971688/3576984 <matches way too much>
+#     - [-0-9() ]{7,} <matches 7+ spaces in a row>
+#     - [+0-9()][-0-9() ]{5,}[0-9()] <matches timestamps like 1998-08-08 03>
+#     - [+][0-9]{1,3} [0-9]{3,8}(?: [0-9]{3,8})? <misses (+XX) XXXXXXXX in BZ#65>
+#     - \\(?[+][0-9]{1,3}\\)? [0-9]{3,8}(?: [0-9]{3,8})? <misses (+XX X)   XXX XX XX in BZ#52>
+#  generally this appears to be a tough problem. approach now is to look for the
+#    call-out phrases (phone/tel/fax) and then censor subsequent text -- works
+#    under the assumption that these phone #s are only showing up in e=mail signatures,
+#    so that hopefully just axing everything below doesn't block content.
+#  a close alternative -- simply censoring the lines with these anchors -- fails to catch
+#    constructions like that in BZ#3, where two numbers are coupled over two lines
+censor_phone = function(x) {
+  lines = strsplit(x, '\n', fixed = TRUE)[[1L]]
+  for (ii in seq_along(lines)) {
+    if (grepl('\\b(?:tel|fax|phone|ph)\\b', lines[ii], ignore.case = TRUE)) {
+      cat('\n*** REMOVING DETECTED PHONE NUMBER & REMAINDER ***\n')
+      cat(tail(lines, 1L-ii), sep = '\n')
+      lines[ii] = '<CENSORING FROM DETECTED PHONE NUMBER ONWARDS; SEE BUGZILLA>'
+      lines = head(lines, ii)
+    }
+  }
+  paste(lines, collapse = '\n')
+}
+
+censor = function(x) censor_phone(censor_email(x))
 
 # ---- SCRAPING UTILITIES ----
 check_credentials = function() {
@@ -45,18 +89,9 @@ bugzilla_session = function(URL = 'https://bugs.r-project.org') {
   return(session)
 }
 
-# strip several kinds of whitespace
-clean = function(x, replace_newline = TRUE, replace_nbsp = TRUE, collapse_ws = TRUE) {
-  text = trimws(x)
-  if (replace_newline) text = gsub('\n', ' ', text, fixed = TRUE)
-  if (replace_nbsp) text = gsub(intToUtf8(160L), ' ', text, fixed = TRUE)
-  if (collapse_ws) text = gsub('\\s{2,}', ' ', text)
-  return(text)
-}
-
 # wrapper for html_text %>% clean
 html_text_clean = function(x, replace_newline = TRUE, replace_nbsp = TRUE, collapse_ws = TRUE) {
-  return(clean(html_text(x), replace_newline, replace_nbsp, collapse_ws))
+  return(clean_ws(html_text(x), replace_newline, replace_nbsp, collapse_ws))
 }
 
 # wrapper for html_node %>% html_text_clean
@@ -134,7 +169,7 @@ get_bug_data = function(bug_page) {
 
     status = get_field(meta_table, 'span', 'static_bug_status'),
     alias = get_field(meta_table, 'tr/td', 'field_tablerow_alias'),
-    component = clean(gsub(
+    component = clean_ws(gsub(
       '(show other bugs)', '', fixed = TRUE,
       get_field(meta_table, 'td', 'field_container_component', clean = FALSE)
     )),
@@ -153,7 +188,7 @@ get_bug_data = function(bug_page) {
     )),
 
     reported_info = get_field(time_table, 'tr/td', 'field_tablerow_reported'),
-    modified_info = clean(gsub(
+    modified_info = clean_ws(gsub(
       '(History)', '', fixed = TRUE,
       get_field(time_table, 'tr/td', 'field_tablerow_modified', clean = FALSE)
     )),
@@ -163,40 +198,6 @@ get_bug_data = function(bug_page) {
     comment_info = lapply(comments[-1L], get_comment_info)
   )
 }
-
-# this might be over-aggressive, e.g. there are probably some
-#   public-facing emails like the R mailing lists
-censor_email = function(s) {
-  gsub('([a-zA-Z0-9._]+)@([a-zA-Z0-9._]+)', '\\1@<::CENSORED -- SEE ORIGINAL ON BUGZILLA::>', s)
-}
-
-# comments copied from e-mails might include the e-mail signature [and hence phone #]
-#   attempts:
-#     - https://stackoverflow.com/a/20971688/3576984 <matches way too much>
-#     - [-0-9() ]{7,} <matches 7+ spaces in a row>
-#     - [+0-9()][-0-9() ]{5,}[0-9()] <matches timestamps like 1998-08-08 03>
-#     - [+][0-9]{1,3} [0-9]{3,8}(?: [0-9]{3,8})? <misses (+XX) XXXXXXXX in BZ#65>
-#     - \\(?[+][0-9]{1,3}\\)? [0-9]{3,8}(?: [0-9]{3,8})? <misses (+XX X)   XXX XX XX in BZ#52>
-#  generally this appears to be a tough problem. approach now is to look for the
-#    call-out phrases (phone/tel/fax) and then censor subsequent text -- works
-#    under the assumption that these phone #s are only showing up in e=mail signatures,
-#    so that hopefully just axing everything below doesn't block content.
-#  a close alternative -- simply censoring the lines with these anchors -- fails to catch
-#    constructions like that in BZ#3, where two numbers are coupled over two lines
-censor_phone = function(x) {
-  lines = strsplit(x, '\n', fixed = TRUE)[[1L]]
-  for (ii in seq_along(lines)) {
-    if (grepl('\\b(?:tel|fax|phone|ph)\\b', lines[ii], ignore.case = TRUE)) {
-      lines[ii] = '<CENSORING FROM DETECTED PHONE NUMBER ONWARDS; SEE BUGZILLA>'
-      cat('\n*** REMOVING DETECTED PHONE NUMBER & REMAINDER ***\n')
-      cat(tail(lines, 1L-ii), sep = '\n')
-      lines = head(lines, ii)
-    }
-  }
-  paste(lines, collapse = '\n')
-}
-
-censor = function(x) censor_phone(censor_email(x))
 
 # ---- MIRRORING UTILITIES ----
 # check if we've seen this label. if not, create the label with a random color.
