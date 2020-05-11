@@ -57,6 +57,50 @@ censor_phone = function(x) {
 
 censor = function(x) censor_phone(censor_email(x))
 
+# attempt to maintain fidelity between Bugzilla text and GitHub Markdown text
+#   - Bugzilla quote blocks (lines starting with >) --> Markdown code fences
+#       this also subsumes true quotes, but it should be fine to en-code those
+#   - some code elements outside of code blocks that end up interpreted as HTML
+#       + ~ in formulas [interpreted as strikethrough]
+#       + # as comment [interpreted as section header]
+#       + TODO: --- immediately after a line [previous line -> section header]
+markdown_convert = function(text) {
+  lines = strsplit(text, '\n', fixed = TRUE)[[1L]]
+
+  code_block = grepl('^> ', lines)
+  if (any(code_block)) {
+    lines[code_block] = gsub('^> ', '', lines[code_block])
+
+    with(rle(code_block), {
+
+      cum_lengths = cumsum(lengths)
+      for (ii in which(values)) {
+        if (ii == 1L) {
+          lines[1L] = paste0('```\n', lines[1L])
+        } else {
+          start_idx = cum_lengths[ii - 1L] + 1L
+          lines[start_idx] = paste0('```\n', lines[start_idx])
+        }
+        end_idx = cum_lengths[ii]
+        lines[end_idx] = paste0(lines[end_idx], '\n```')
+      }
+      lines <<- lines
+    })
+  }
+  if (!all(code_block)) {
+    ncode_block = !code_block
+    # use of ~ is used for strikethrough, even across multiple lines,
+    #   but also, it's commmon in URLs line .../~ripley/
+    lines[ncode_block] = gsub('[^/]~', '&sim;', lines[ncode_block])
+    # initial '# ' is treated as a section header. NB: this
+    #   also handles sub-sections (##...) since breaking the first #
+    #   also breaks the interpretation of the latter #
+    lines[ncode_block] = gsub('^(\\s*)#', '\\1&num;', lines[ncode_block])
+  }
+
+  lines
+}
+
 # ---- SCRAPING UTILITIES ----
 check_credentials = function() {
   creds = Sys.getenv(
