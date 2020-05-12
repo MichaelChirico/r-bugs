@@ -1,7 +1,7 @@
 # BACK-FILLING BUG REPORTS INCREMENTALLY [[OFFLINE]]
 URL = 'https://bugs.r-project.org'
 BUG_URL_FMT = file.path(URL, 'bugzilla', 'show_bug.cgi?id=%d')
-MAX_BUGS_TO_READ = 10L
+MAX_BUGS_TO_READ = 500L
 
 source('utils.R')
 library(gh)
@@ -14,7 +14,9 @@ bug_file = file.path('data', 'known_bugs.csv')
 label_file = file.path('data', 'labels.csv')
 
 # force colClasses for the initialization -- all-NA column is read as logical
-bugDF = fread(bug_file, colClasses = c(github_id = 'integer'))[is.na(github_id)]
+# NB: at the end, we fwrite directly, so we have to read the whole file, then
+#     overwrite again with the full file
+bugDF = fread(bug_file, colClasses = c(github_id = 'integer'))
 
 labelDF = if (file.exists(label_file)) {
   fread(label_file)
@@ -23,8 +25,8 @@ labelDF = if (file.exists(label_file)) {
   n_observed = integer(), seed_issues = character()
 )
 
-# account for the trailing case when fewer than MAX_BUGS_TO_READ are left
-for (bug_i in seq_len(nrow(head(bugDF, MAX_BUGS_TO_READ)))) {
+# head: account for the trailing case when fewer than MAX_BUGS_TO_READ are left
+for (bug_i in head(bugDF[is.na(github_id), which = TRUE], MAX_BUGS_TO_READ)) {
   # ---- 1. EXTRACT BUG DATA FROM PAGE ----
   bz_id = bugDF$bugzilla_id[bug_i]
   bug = get_bug_data(jump_to(session, sprintf(BUG_URL_FMT, bz_id)))
