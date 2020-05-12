@@ -1,45 +1,27 @@
 name,color,n_observed,seed_issues
-Misc,2DCDC1,1,1
-R 2.y.z,38B3B4,1,1
-PowerPC Mac OS X v10.4,964C9B,1,1
-P5 normal,61F3DD,50,"1,3,4,5,7,8,9,10,12"
-Language,F20169,20,"3,5,9,10,13,15,24,36,40"
-old,98E363,49,"3,4,5,7,8,9,10,12,13"
-All All,91EC49,25,"3,18,19,21,22,24,25,26,37"
-Models,5D16C3,4,"4,8,14,22"
-All Solaris,E9672B,8,"4,5,9,10,14,36,40,63"
-System-specific,5BE8FF,3,"7,25,39"
-All Other,4C34BB,2,"7,8"
-I/O,AA6D44,2,"12,34"
-All Linux-Fedora,712E8C,3,"12,13,58"
-All Linux-Debian,37D0C1,2,"15,34"
-Documentation,E50E71,3,"18,19,52"
-Startup,0A4249,1,21
-Analyses,F54D01,1,26
-Low-level,D7D2EE,2,"37,62"
-Graphics,A9DC8A,8,"38,41,42,45,56,61,65,66"
-All Linux,301151,4,"43,52,54,65"
-Windows GUI / Window specific,4C8435,4,"46,47,57,59"
-ix86 (32-bit) Windows 32-bit,D37A19,5,"47,57,59,62,66"
-Installation,D0821D,1,58
-Component - Graphics,61CB0C,12,"69,79,86,93,106,114,123,126,130"
-Version - old,F00228,69,"69,70,71,72,73,75,77,78,79"
-Hardware - All All,22EE85,45,"69,72,75,78,79,82,83,86,90"
-Importance - P5 normal,91C705,69,"69,70,71,72,73,75,77,78,79"
-Component - Language,34F6C3,26,"70,72,73,77,78,82,84,85,89"
-Hardware - All Linux,0590E7,11,"70,71,85,91,104,106,121,127,139"
-Component - System-specific,8724E4,6,"71,83,92,120,127,145"
-Hardware - All Solaris,0BB8A9,9,"73,77,84,89,92,114,115,126,147"
-Component - Documentation,8D4158,3,"75,133,146"
-Component - Misc,D92CDB,2,"91,147"
-Component - Models,4FB9F0,2,"97,121"
-Component - Low-level,2B27BF,6,"101,112,119,135,140,143"
-Component - Startup,1036BB,1,104
-Component - Wishlist,56289E,1,105
-Component - I/O,35EB1C,4,"107,117,125,129"
-Hardware - All Other,0D2C31,1,107
-Component - Analyses,912E82,3,"116,136,144"
-Component - Add-ons,07E49E,1,122
-Component - Installation,B335E9,1,134
-Component - Accuracy,041D37,1,138
-Hardware - All Linux-Fedora,C4E782,3,"140,141,142"
+Component - Misc,B86858,29,"1,91,147,156,176,253,255,259,264"
+Version - R 2.y.z,08C490,1,1
+Hardware - PowerPC Mac OS X v10.4,2A2050,1,1
+Importance - P5 normal,657EA8,500,"1,3,4,5,7,8,9,10,12"
+Component - Language,D79E0F,91,"3,5,9,10,13,15,24,36,40"
+Version - old,F89199,499,"3,4,5,7,8,9,10,12,13"
+Hardware - All All,990F74,226,"3,18,19,21,22,24,25,26,37"
+Component - Models,AA8309,30,"4,8,14,22,97,121,189,198,224"
+Hardware - All Solaris,408520,50,"4,5,9,10,14,36,40,63,73"
+Component - System-specific,4DCEF2,28,"7,25,39,71,83,92,120,127,145"
+Hardware - All Other,A3DC44,41,"7,8,107,163,196,210,254,261,265"
+Component - I/O,526257,17,"12,34,107,117,125,129,193,203,212"
+Hardware - All Linux-Fedora,CF483D,13,"12,13,58,140,141,142,177,200,201"
+Hardware - All Linux-Debian,88111C,6,"15,34,157,426,499,590"
+Component - Documentation,E805D7,40,"18,19,52,75,133,146,181,182,191"
+Component - Startup,370F29,14,"21,104,227,242,261,272,273,346,375"
+Component - Analyses,0AB2E6,21,"26,116,136,144,157,159,216,217,228"
+Component - Low-level,7D0761,64,"37,62,101,112,119,135,140,143,158"
+Component - Graphics,2C9915,89,"38,41,42,45,56,61,65,66,69"
+Hardware - All Linux,1D8484,115,"43,52,54,65,70,71,85,91,104"
+Component - Windows GUI / Window specific,DBF6F9,14,"46,47,57,59,204,205,231,271,345"
+Hardware - ix86 (32-bit) Windows 32-bit,884BB0,48,"47,57,59,62,66,161,204,205,232"
+Component - Installation,83EBDD,37,"58,134,165,177,183,223,247,262,280"
+Component - Wishlist,BE3B99,10,"105,263,296,372,387,480,515,516,517"
+Component - Add-ons,83307C,13,"122,164,243,313,431,443,471,503,538"
+Component - Accuracy,4D907E,3,"138,161,594"
