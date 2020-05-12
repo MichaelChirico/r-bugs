@@ -42,6 +42,7 @@ censor_email = function(s) {
 #    so that hopefully just axing everything below doesn't block content.
 #  a close alternative -- simply censoring the lines with these anchors -- fails to catch
 #    constructions like that in BZ#3, where two numbers are coupled over two lines
+# TODO: fix case like BZ#135, where "ph.ven" is part of the description & caught as phone #
 censor_phone = function(x) {
   lines = strsplit(x, '\n', fixed = TRUE)[[1L]]
   for (ii in seq_along(lines)) {
@@ -65,12 +66,17 @@ censor = function(x) censor_phone(censor_email(x))
 #       + # as comment [interpreted as section header]
 #       + lines with only hyphens [interpret previous line as section header]
 #       + plus sign (+) [interpreted as list item initially]
+#       + TODO: LaTeX-style quotes (`...') becomes inline code if there's > 1 [BZ#196]
+#       + TODO: print(matrix) outside quote block --> 4 spaces before colnames,
+#       +       hence interpreted as code block for that line only [BZ#193]
 markdown_convert = function(text) {
   lines = strsplit(text, '\n', fixed = TRUE)[[1L]]
 
-  code_block = grepl('^> ', lines)
+  # BZ#193 -- '> data' and '>data' both are interpreted as quotes
+  # BZ#178 -- '   > data' interpreted as quote
+  code_block = grepl('^\\s*>', lines)
   if (any(code_block)) {
-    lines[code_block] = gsub('^> ', '', lines[code_block])
+    lines[code_block] = gsub('^\\s*>\\s*', '', lines[code_block])
 
     with(rle(code_block), {
 
@@ -109,6 +115,10 @@ markdown_convert = function(text) {
     all_dash = grepl('^\\s*-[ -]*$', lines[ncode_block])
     lines[ncode_block][all_dash] =
       gsub('-', '&#45;', lines[ncode_block][all_dash], fixed = TRUE)
+    # ditto for lines with only =
+    all_equal = grepl('^\\s*=[ =]*$', lines[ncode_block])
+    lines[ncode_block][all_equal] =
+      gsub('=', '&#61;', lines[ncode_block][all_equal], fixed = TRUE)
   }
 
   paste(lines, collapse = '\n')
@@ -433,7 +443,7 @@ build_body = function(params) {
 # ---- GITHUB UTILITIES
 OWNER = 'MichaelChirico'
 REPO = 'r-bugs'
-TAG_FIELDS = c('Component', 'Version', 'Hardware', 'Importance')
+TAG_FIELDS = c('Status', 'Component', 'Version', 'Hardware', 'Importance')
 
 create_issue = function(params) {
   gh_call = list(
@@ -446,7 +456,8 @@ create_issue = function(params) {
     i = .(name = paste(TAG_FIELDS, '-', unlist(params[tolower(TAG_FIELDS)]))),
     on = 'name', name[n_observed >= 10L]
   ]
-  if (length(labels)) gh_call$labels = labels
+  # as.list needed -- length-1 input fails
+  if (length(labels)) gh_call$labels = as.list(labels)
   do.call(gh, gh_call)
 }
 
@@ -469,4 +480,3 @@ create_comment = function(comment, attachment_info, issue_id) {
     )
   )
 }
-
