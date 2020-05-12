@@ -63,7 +63,8 @@ censor = function(x) censor_phone(censor_email(x))
 #   - some code elements outside of code blocks that end up interpreted as HTML
 #       + ~ in formulas [interpreted as strikethrough]
 #       + # as comment [interpreted as section header]
-#       + TODO: --- immediately after a line [previous line -> section header]
+#       + lines with only hyphens [interpret previous line as section header]
+#       + plus sign (+) [interpreted as list item initially]
 markdown_convert = function(text) {
   lines = strsplit(text, '\n', fixed = TRUE)[[1L]]
 
@@ -95,10 +96,22 @@ markdown_convert = function(text) {
     # initial '# ' is treated as a section header. NB: this
     #   also handles sub-sections (##...) since breaking the first #
     #   also breaks the interpretation of the latter #
-    lines[ncode_block] = gsub('^(\\s*)#', '\\1&num;', lines[ncode_block])
+    lines[ncode_block] = gsub('^(\\s*)#(#*\\s)', '\\1&num;\\2', lines[ncode_block])
+    # initial '+' is treated as a list item
+    lines[ncode_block] = gsub('^(\\s*)[+]', '\\1&#43;', lines[ncode_block])
+    # if the line is all hyphens, it's either interpreted as a section header
+    #   (for the line before) or as a horizontal separator (if it's alone).
+    #   conservatively look only for all-hyphen lines, to mitigate potential
+    #   spillover effects of replacing with the HTML entity.
+    # NB: &minus; is too wide, &hyphen; is too narrow vs. original - on GitHub.
+    #   &#45; seems just right. Also, - is read as [hex code] 2d from
+    #   the sample BZ#134, so - in the character class suffices for now
+    all_dash = grepl('^\\s*-[ -]*$', lines[ncode_block])
+    lines[ncode_block][all_dash] =
+      gsub('-', '&#45;', lines[ncode_block][all_dash], fixed = TRUE)
   }
 
-  lines
+  paste(lines, collapse = '\n')
 }
 
 # ---- SCRAPING UTILITIES ----
@@ -188,7 +201,9 @@ get_comment_info = function(c) {
     id = html_attr(c, "id"),
     author = html_node_clean(c, './/span[@class="bz_comment_user"]'),
     timestamp = html_node_clean(c, './/span[@class="bz_comment_time"]'),
-    text = censor(html_text(html_node(c, xpath = './/pre[@class="bz_comment_text"]'))),
+    text = censor(markdown_convert(html_text(
+      html_node(c, xpath = './/pre[@class="bz_comment_text"]')
+    ))),
     # there are two <a>, one to "edit"; the one with name="..." is what we want
     attachment_title = html_text(
       html_node(c, xpath = './/pre[@class="bz_comment_text"]//a/@name')
