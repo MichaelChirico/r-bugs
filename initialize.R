@@ -5,6 +5,7 @@ FULL_BUGLIST_PATH = file.path(
 )
 
 source('utils.R')
+library(data.table)
 
 check_credentials()
 session = bugzilla_session(URL)
@@ -21,14 +22,11 @@ bug_ids = bugs %>%
   html_text %>% gsub('show_bug.cgi?id=', '', . , fixed = TRUE) %>%
   as.integer %>% unique %>% sort
 
-bugDF = data.frame(
-  bug_id = bug_ids,
-  mirrored = FALSE
+bugDF = data.table(
+  bugzilla_id = bug_ids,
+  github_id = NA_integer_
 )
 
 # now checkout to data/known_bugs.csv & pass to backfill.R
 dir.create('data', showWarnings = FALSE)
-write.csv(
-  bugDF, file.path('data', 'known_bugs.csv'),
-  row.names = FALSE, quote = FALSE
-)
+fwrite(bugDF, file.path('data', 'known_bugs.csv'))
