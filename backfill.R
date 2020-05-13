@@ -38,16 +38,16 @@ for (bug_i in head(bugDF[is.na(github_id), which = TRUE], MAX_BUGS_TO_READ)) {
 
   # ---- 3. POST TO GITHUB AND RECORD GITHUB ID ----
   receipt = create_issue(bug)
-  this_issue = as.integer(gsub('.*/([0-9]+)$', '\\1', receipt$url))
-  bugDF[.(bugzilla_id = bz_id), on = 'bugzilla_id', github_id := this_issue]
+  gh_id = as.integer(gsub('.*/([0-9]+)$', '\\1', receipt$url))
+  bugDF[.(bugzilla_id = bz_id), on = 'bugzilla_id', github_id := gh_id]
 
   # ---- 4. POST COMMENTS ----
   for (comment in bug$comment_info) {
-    create_comment(comment, bug$attachment_info, this_issue)
+    create_comment(comment, bug$attachment_info, gh_id)
   }
 
   # ---- 5. CLOSE CLOSED ISSUES ----
-  if (grepl('CLOSED', bug$status)) close_issue(this_issue)
+  if (grepl('CLOSED', bug$status)) close_issue(gh_id)
 }
 
 fwrite(bugDF, bug_file)
