@@ -12,8 +12,8 @@ This repository exists to help bridge that gap -- the official bug tracker is mi
 
 ### How this repo was set up
 
- 1. Download all bug IDs at the time of initialization [`initialize.R`](initialize.R)
- 2. Record them all as "unmirrored", then gradually start catching up the bugs incrementally [`backfill.R`](backfill.R)
- 3. Maintenance mode -- record only incremental bugs & updates to bugs on a daily basis [`update.R`](update.R)
+ 1. [`initialize.R`](initialize.R) - Download all bug IDs at the time of initialization
+ 2. [`backfill.R`](backfill.R) - Record them all as "unmirrored", then gradually start catching up the bugs incrementally
+ 3. [`update.R`](update.R) - Maintenance mode -- record only incremental bugs & updates to bugs on a daily basis
  
 Built with [`rvest`](https://github.com/tidyverse/rvest), [`gh`](https://github.com/r-lib/gh), and [`data.table`](https://github.com/Rdatatable/data.table) and maintained with [GitHub Actions](https://github.com/features/actions).
