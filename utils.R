@@ -69,6 +69,7 @@ censor = function(x) censor_phone(censor_email(x))
 #       + TODO: LaTeX-style quotes (`...') becomes inline code if there's > 1 [BZ#196]
 #       + TODO: print(matrix) outside quote block --> 4 spaces before colnames,
 #       +       hence interpreted as code block for that line only [BZ#193]
+#   + TODO: cross-references like Bug 7988 --> #GH_ID [BZ#7987]
 markdown_convert = function(text) {
   lines = strsplit(text, '\n', fixed = TRUE)[[1L]]
 
@@ -137,7 +138,7 @@ check_credentials = function() {
 }
 
 # begin a session in bugzilla & log in
-bugzilla_session = function(URL = 'https://bugs.r-project.org') {
+bugzilla_session = function(URL = 'https://bugs.r-project.org/bugzilla') {
   session = html_session(URL)
 
   # the login form at the top of the page behind "login" button
@@ -188,7 +189,7 @@ get_attachment_info = function(a) {
   link = html_node(a,
     xpath = './/a[contains(@href, "cgi") and not(contains(@href, "action=edit"))]'
   )
-  url = file.path(URL, 'bugzilla', html_attr(link, 'href'))
+  url = file.path(URL, html_attr(link, 'href'))
 
   meta = html_node(a, xpath = './/span[@class="bz_attach_extra_info"]')
   list(
@@ -217,6 +218,11 @@ get_comment_info = function(c) {
     # there are two <a>, one to "edit"; the one with name="..." is what we want
     attachment_title = html_text(
       html_node(c, xpath = './/pre[@class="bz_comment_text"]//a/@name')
+    ),
+    # Attachment may be a reference to a different page, hence the name
+    #   anchor won't be matched in get_attachment_info(), e.g. BZ#7987
+    attachment_href = html_text(
+      html_node(c, xpath = './/pre[@class="bz_comment_text"]//a[@name]/@href')
     )
   )
 }
@@ -377,8 +383,10 @@ COMMENT_TEMPLATE = "%s
 
 build_attachment_txt = function(title, info) {
   if (is.null(title) || is.na(title)) return('')
+  idx = which(sapply(info, `[[`, 'comment_anchor') == title)
+  if (!length(idx)) return(NULL)
   with(
-    info[[which(sapply(info, `[[`, 'comment_anchor') == title)]],
+    info[[idx]],
     sprintf(ATTACHMENT_TEMPLATE, id, author, url, timestamp, extra_info)
   )
 }
@@ -445,7 +453,7 @@ OWNER = 'MichaelChirico'
 REPO = 'r-bugs'
 TAG_FIELDS = c('Status', 'Component', 'Version', 'Hardware', 'Importance')
 
-create_issue = function(params) {
+create_issue = function(params, dryrun=FALSE) {
   gh_call = list(
     endpoint = "POST /repos/:owner/:repo/issues",
     owner = OWNER, repo = REPO,
@@ -458,7 +466,7 @@ create_issue = function(params) {
   ]
   # as.list needed -- length-1 input fails
   if (length(labels)) gh_call$labels = as.list(labels)
-  do.call(gh, gh_call)
+  if (dryrun) gh_call else do.call(gh, gh_call)
 }
 
 close_issue = function(issue_id) {
@@ -469,14 +477,23 @@ close_issue = function(issue_id) {
   )
 }
 
-create_comment = function(comment, attachment_info, issue_id) {
+create_comment = function(comment, attachment_info, issue_id, dryrun = FALSE) {
+  attachment_txt = build_attachment_txt(comment$attachment_title, attachment_info)
+  # _maybe_ could have kept a separate DB mapping attachment IDs to Bugzilla issue
+  #   numbers, but it's pretty late in the game for that... maybe something to PATCH later?
+  if (is.null(attachment_txt)) {
+    id = as.integer(gsub('.*[?]id=', '', comment$attachment_href))
+    attachment_txt = sprintf(ATTACHMENT_TEMPLATE,
+      id, '&lt;SEE BUGZILLA>', file.path(URL, comment$attachment_href), '?', '?'
+    )
+  }
+  body = sprintf(COMMENT_TEMPLATE,
+    comment$text, comment$author, comment$timestamp, attachment_txt
+  )
+  if (dryrun) return(body)
   gh(
     "POST /repos/:owner/:repo/issues/:issue_number/comments",
     owner = OWNER, repo = REPO,
-    issue_number = issue_id,
-    body = sprintf(COMMENT_TEMPLATE,
-      comment$text, comment$author, comment$timestamp,
-      build_attachment_txt(comment$attachment_title, attachment_info)
-    )
+    issue_number = issue_id, body = body
   )
 }

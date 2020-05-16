@@ -1,5 +1,5 @@
 # INCREMENTAL UPDATES OF ISSUES [[ONLINE]]
-URL = 'https://bugs.r-project.org'
+URL = 'https://bugs.r-project.org.bugzilla'
 
 source('utils.R')
 library(data.table)
@@ -36,7 +36,7 @@ if (file.exists(last_exec_date)) {
 
 # built into slightly-more-readable format from the advanced search page results...
 updated_bug_url = paste0(
-  file.path(URL, 'bugzilla', 'buglist.cgi?'),
+  file.path(URL, 'buglist.cgi?'),
   paste(
     collapse = '&',
     c(
@@ -66,7 +66,7 @@ updated_bug_paths = jump_to(session, updated_bug_url) %>%
 
 for (updated_bug_path in updated_bug_paths) {
   bz_id = as.integer(gsub('.*=', '', updated_bug_path))
-  bug = get_bug_data(jump_to(session, file.path(URL, 'bugzilla', updated_bug_path)))
+  bug = get_bug_data(jump_to(session, file.path(URL, updated_bug_path)))
 
   # patch an existing issue
   # NB: skipping binary search approach here because this table grows within

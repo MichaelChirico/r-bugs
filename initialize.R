@@ -1,8 +1,6 @@
 # INITIALIZATION SCRIPT FOR THE REPO [[OFFLINE]]
-URL = 'https://bugs.r-project.org'
-FULL_BUGLIST_PATH = file.path(
-  URL, 'bugzilla', 'buglist.cgi?limit=0'
-)
+URL = 'https://bugs.r-project.org/bugzilla'
+FULL_BUGLIST_PATH = file.path(URL, 'buglist.cgi?limit=0')
 
 source('utils.R')
 library(data.table)

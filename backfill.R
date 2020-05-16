@@ -1,12 +1,13 @@
 # BACK-FILLING BUG REPORTS INCREMENTALLY [[OFFLINE]]
-URL = 'https://bugs.r-project.org'
-BUG_URL_FMT = file.path(URL, 'bugzilla', 'show_bug.cgi?id=%d')
+URL = 'https://bugs.r-project.org/bugzilla'
+BUG_URL_FMT = file.path(URL, 'show_bug.cgi?id=%d')
 MAX_BUGS_TO_READ = 500L
 
 source('utils.R')
 library(gh)
 library(data.table)
 
+options(warn = 2)
 check_credentials()
 session = bugzilla_session(URL)
 
@@ -42,7 +43,7 @@ for (bug_i in head(bugDF[is.na(github_id), which = TRUE], MAX_BUGS_TO_READ)) {
   bugDF[.(bugzilla_id = bz_id), on = 'bugzilla_id', github_id := gh_id]
 
   # ---- 4. POST COMMENTS ----
-  for (comment in bug$comment_info) {
+  for (comment in tail(bug$comment_info, -6L)) {
     create_comment(comment, bug$attachment_info, gh_id)
   }
 
