@@ -6,7 +6,7 @@
 .Renviron
 
 # contain some (potentially) private info
-template-pages/bug-003.html
-template-pages/bug-052.html
-template-pages/bug-065.html
+template-pages/bug-0003.html
+template-pages/bug-0052.html
+template-pages/bug-0065.html
 
