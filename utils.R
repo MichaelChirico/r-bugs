@@ -278,16 +278,14 @@ get_bug_data = function(bug_page) {
 # check if we've seen this label. if not, create the label with a random color.
 #   If so, update its observation count. Once a label reaches 10 times observed,
 #   it gets POSTed to GitHub.
-update_label = function(label, bz_id) {
+update_label = function(label, bz_id, dryrun = FALSE) {
   # this label is known; update its frequency
   if (label %chin% labelDF$name) {
     labelDF[.(name = label), on = 'name', c('n_observed', 'seed_issues') := {
       if (n_observed < 10L) {
         if (n_observed < 9L) {
           seed_issues = paste0(seed_issues, ',', bz_id)
-        } else {
-          # PROBLEM -- the first 9 instances of this label won't have it
-          #  assigned to the
+        } else if (!dryrun) {
           gh('POST /repos/:owner/:repo/labels',
              owner = OWNER, repo = REPO,
              name = name, color = color

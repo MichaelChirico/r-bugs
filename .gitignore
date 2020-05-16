@@ -5,6 +5,9 @@
 # secrets
 .Renviron
 
+# scratch work
+scratch.R
+
 # contain some (potentially) private info
 template-pages/bug-0003.html
 template-pages/bug-0052.html
