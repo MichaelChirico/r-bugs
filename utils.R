@@ -47,8 +47,6 @@ censor_phone = function(x) {
   lines = strsplit(x, '\n', fixed = TRUE)[[1L]]
   for (ii in seq_along(lines)) {
     if (grepl('\\b(?:tel|fax|phone|ph)\\b', lines[ii], ignore.case = TRUE)) {
-      cat('\n*** REMOVING DETECTED PHONE NUMBER & REMAINDER ***\n')
-      cat(tail(lines, 1L-ii), sep = '\n')
       lines[ii] = '<CENSORING FROM DETECTED PHONE NUMBER ONWARDS; SEE BUGZILLA>'
       lines = head(lines, ii)
     }
@@ -169,6 +167,19 @@ html_node_clean = function(x, xpath, ...)
 # ditto, for html_nodes
 html_nodes_clean = function(x, xpath, ...)
   html_text_clean(html_nodes(x, xpath = xpath), ...)
+
+# BZ#14005 has a massive description. GitHub API limits to 2^16 characters
+MAX_CHAR = 65536L
+txt_truncate = function(x, BUFFER) {
+  if (nchar(x) + BUFFER > MAX_CHAR) { # BUFFER is the rest of the issue text
+    trunc_msg = '\n-------\n## MESSAGE TRUNCATED. SEE BUGZILLA'
+    return(paste0(
+      substr(x, 1L, MAX_CHAR - BUFFER - nchar(trunc_msg)),
+      trunc_msg
+    ))
+  }
+  x
+}
 
 # common extractions:
 #   <tr id='...'><td>desired text</td></tr>
@@ -343,7 +354,7 @@ BODY_TEMPLATE = "%s
 
  - Bug author - %s
  - Creation time - %s
- - [Bugzilla link](%s)
+ - [Bugzilla link](%s%s)
  - Status - %s
  - Alias - %s
  - Component - %s
@@ -427,23 +438,23 @@ build_body = function(params) {
     params$attachment_info
   )
 
-  sprintf(BODY_TEMPLATE,
-    params$description_info$text,
-    params$description_info$author,
-    params$description_info$timestamp,
-    sprintf(BUG_URL_FMT, params$id),
-    params$status,
-    params$alias,
-    params$component,
-    params$version,
-    params$hardware,
-    params$importance,
-    params$assignee,
-    params$url,
-    modified_txt,
-    related_txt,
-    attachment_txt
+  param_fields = c(
+    'id', 'status', 'alias', 'component', 'version',
+    'hardware', 'importance', 'assignee', 'url'
   )
+  fmt_args = c(
+    list(BODY_TEMPLATE),
+    params$description_info[c('text', 'author', 'timestamp')],
+    list(BUG_URL_STEM),
+    params[param_fields],
+    list(modified_txt, related_txt, attachment_txt)
+  )
+  out = do.call(sprintf, unname(fmt_args))
+  if (nchar(out) > MAX_CHAR) {
+    fmt_args$text = txt_truncate(fmt_args$text, nchar(out) - nchar(fmt_args$text))
+    out = do.call(sprintf, unname(fmt_args))
+  }
+  out
 }
 
 # ---- GITHUB UTILITIES
@@ -485,9 +496,16 @@ create_comment = function(comment, attachment_info, issue_id, dryrun = FALSE) {
       id, '&lt;SEE BUGZILLA>', file.path(URL, comment$attachment_href), '?', '?'
     )
   }
-  body = sprintf(COMMENT_TEMPLATE,
-    comment$text, comment$author, comment$timestamp, attachment_txt
+  fmt_args = c(
+    list(COMMENT_TEMPLATE),
+    comment[c('text', 'author', 'timestamp')],
+    list(attachment_txt)
   )
+  body = do.call(sprintf, unname(fmt_args))
+  if (nchar(body) > MAX_CHAR) {
+    fmt_args$text = txt_truncate(fmt_args$text, nchar(body) - nchar(fmt_args$text))
+    body = do.call(sprintf, unname(fmt_args))
+  }
   if (dryrun) return(body)
   gh(
     "POST /repos/:owner/:repo/issues/:issue_number/comments",
