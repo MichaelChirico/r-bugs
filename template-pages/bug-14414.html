@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<!-- saved from url=(0060)https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#a0 -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>14414 – download.file() leaves destination file open on error</title>
+
+
+<link href="./bug-14414_files/9f0ec3e7cf299a24f0e0a1a416af2ffd.css" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+<script type="text/javascript" src="./bug-14414_files/aae018547291cb399f8ae4d70aa29abc.js"></script>
+
+    <script type="text/javascript">
+    <!--
+          YAHOO.namespace('bugzilla');
+          YAHOO.util.Event.addListener = function (el, sType, fn, obj, overrideContext) {
+              if ( ("onpagehide" in window || YAHOO.env.ua.gecko) && sType === "unload") { sType = "pagehide"; };
+              var capture = ((sType == "focusin" || sType == "focusout") && !YAHOO.env.ua.ie) ? true : false;
+              return this._addListener(el, this._getType(sType), fn, obj, overrideContext, capture);
+          };
+          if ( "onpagehide" in window || YAHOO.env.ua.gecko) {
+              YAHOO.util.Event._simpleRemove(window, "unload",
+                                             YAHOO.util.Event._unload);
+          }
+
+
+        function unhide_language_selector() {
+            $('#lang_links_container').removeClass('bz_default_hidden');
+        }
+        $(document).ready(unhide_language_selector);
+
+        // This sets the default parameters for all calendar fields.
+        $.datepicker.setDefaults({
+            dateFormat: "yy-mm-dd", // this is the YYYY-MM-DD format
+            showButtonPanel: true,  // permits to easily select "Today"
+            // These 3 parameters are useful for localization.
+            firstDay: 0,            // 0 = Sunday, 1 = Monday, etc...
+            dayNamesMin: [ "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" ],
+            monthNames: [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ]
+        });
+
+
+        var BUGZILLA = {
+            param: {
+                maxusermatches: 1000
+            },
+            constant: {
+                COMMENT_COLS: 80
+            },
+            string: {
+
+
+                attach_desc_required:
+                    "You must enter a Description for this attachment.",
+                component_required:
+                    "You must select a Component for this bug.",
+                description_required:
+                    "You must enter a Description for this bug.",
+                short_desc_required:
+                    "You must enter a Summary for this bug.",
+                version_required:
+                    "You must select a Version for this bug."
+            }
+              , api_token: 'dHnMDmgIRH1mQQMXF0IgDe'
+        };
+
+
+    if (history && history.replaceState) {
+      if(!document.location.href.match(/show_bug\.cgi/)) {
+        history.replaceState( null,
+                             "14414 – download.file() leaves destination file open on error",
+                             "show_bug.cgi?id=14414" );
+        document.title = "14414 – download.file() leaves destination file open on error";
+      }
+      if (document.location.href.match(/show_bug\.cgi\?.*list_id=/)) {
+        var href = document.location.href;
+        href = href.replace(/[\?&]+list_id=(\d+|cookie)/, '');
+        history.replaceState(null, "14414 – download.file() leaves destination file open on error", href);
+      }
+    }
+    YAHOO.util.Event.onDOMReady(function() {
+      initDirtyFieldTracking();
+
+    });
+    // -->
+    </script>
+<script type="text/javascript" src="./bug-14414_files/3b1581e2958d490ce311fa59bdc71ff1.js"></script>
+
+
+    <!--[if lt IE 9]>
+      <script>
+        document.createElement('header');
+        document.createElement('nav');
+        document.createElement('main');
+        document.createElement('footer');
+      </script>
+    <![endif]-->
+
+
+
+
+    <link rel="search" type="application/opensearchdescription+xml" title="Bugzilla" href="https://bugs.r-project.org/bugzilla/search_plugin.cgi">
+    <link rel="shortcut icon" href="https://bugs.r-project.org/bugzilla/images/favicon.ico">
+  </head>
+
+  <body class="bugs-r-project-org-bugzilla
+                 bz_bug
+                 bz_status_CLOSED
+                 bz_product_R
+                 bz_component_I_O
+                 bz_bug_14414 yui-skin-sam">
+
+  <header id="header"><div id="banner">
+  </div>
+
+    <div id="titles">
+      <span id="title">Bugzilla – Bug&nbsp;14414</span>
+
+        <span id="subtitle" class="subheader">download.file() leaves destination file open on error</span>
+
+        <span id="information" class="header_addl_info">Last modified: 2010-12-26 03:05:19 UTC</span>
+    </div>
+
+
+    <nav id="common_links"><ul class="links">
+  <li><a href="https://bugs.r-project.org/bugzilla/">Home</a></li>
+  <li><span class="separator">| </span><a href="https://bugs.r-project.org/bugzilla/enter_bug.cgi">New</a></li>
+  <li><span class="separator">| </span><a href="https://bugs.r-project.org/bugzilla/describecomponents.cgi">Browse</a></li>
+  <li><span class="separator">| </span><a href="https://bugs.r-project.org/bugzilla/query.cgi">Search</a></li>
+
+  <li class="form">
+    <span class="separator">| </span>
+    <form action="https://bugs.r-project.org/bugzilla/buglist.cgi" method="get" onsubmit="if (this.quicksearch.value == &#39;&#39;)
+                  { alert(&#39;Please enter one or more search terms first.&#39;);
+                    return false; } return true;">
+    <input type="hidden" id="no_redirect_top" name="no_redirect" value="1">
+    <script type="text/javascript">
+      if (history && history.replaceState) {
+        var no_redirect = document.getElementById("no_redirect_top");
+        no_redirect.value = 1;
+      }
+    </script>
+    <input class="txt" type="text" id="quicksearch_top" name="quicksearch" title="Quick Search" value="">
+    <input class="btn" type="submit" value="Search" id="find_top"></form>
+  <a href="https://bugs.r-project.org/bugzilla/page.cgi?id=quicksearch.html" title="Quicksearch Help">[?]</a></li>
+
+  <li><span class="separator">| </span><a href="https://bugs.r-project.org/bugzilla/report.cgi">Reports</a></li>
+
+  <li></li>
+
+
+    <li><span class="separator">| </span><a href="https://bugs.r-project.org/bugzilla/userprefs.cgi">Preferences</a></li>
+<li>
+        <span class="separator">| </span>
+        <a href="https://bugzilla.readthedocs.org/en/latest/using/understanding.html" target="_blank">Help</a>
+      </li>
+
+    <li>
+      <span class="separator">| </span>
+        <a href="https://bugs.r-project.org/bugzilla/index.cgi?logout=1">Log&nbsp;out</a>
+        michaelchirico4@XXXX</li>
+</ul>
+    </nav>
+  </header>
+
+  <main role="main" id="bugzilla-body">
+
+
+<script type="text/javascript">
+      YAHOO.bugzilla.commentTagging.init(false);
+      YAHOO.bugzilla.commentTagging.min_len = 3;
+      YAHOO.bugzilla.commentTagging.max_len = 24;
+      YAHOO.bugzilla.commentTagging.label = 'Comment Tags:';
+      YAHOO.bugzilla.commentTagging.min_len_error =
+        'Comment tags must be at least 3 characters.';
+      YAHOO.bugzilla.commentTagging.max_len_error =
+        'Comment tags cannot be longer than 24 characters.';
+    </script>
+
+<script type="text/javascript">
+<!--
+
+  /* Index all classifications so we can keep track of the classification
+   * for the selected product, which could control field visibility.
+   */
+  var all_classifications = new Array(1);
+      all_classifications['R'] = 'Unclassified';
+//-->
+</script>
+
+<form name="changeform" id="changeform" method="post" action="https://bugs.r-project.org/bugzilla/process_bug.cgi">
+
+  <input type="hidden" name="delta_ts" value="2010-12-25 21:05:19">
+  <input type="hidden" name="id" value="14414">
+  <input type="hidden" name="token" value="1589733897-12YR2UjjftH1kirgNr0fhGVG6dpuWc6HrLt_RqWVoKA">
+<div class="bz_short_desc_container edit_form"><div class="knob-buttons">
+      <input type="submit" value="Save Changes" id="commit_top">
+    </div>
+     <a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414"><b>Bug&nbsp;14414</b></a> <span id="summary_container">
+      - <span id="short_desc_nonedit_display">download.file() leaves destination file open on error</span>
+     </span>
+
+    <div id="summary_input" class="bz_default_hidden"><span class="field_label " id="field_label_short_desc">
+
+
+  <a title="The bug summary is a short sentence which succinctly describes what the bug is about." class="field_help_link" href="https://bugs.r-project.org/bugzilla/page.cgi?id=fields.html#short_desc">Summary:</a>
+
+</span>download.file() leaves destination file open on error
+    </div>
+  </div>
+  <script type="text/javascript">
+    hideEditableField('summary_container',
+                      'summary_input',
+                      'summary_edit_action',
+                      'short_desc',
+                      'download.file() leaves destination file open on error' );
+  </script>
+  <table class="edit_form">
+    <tbody><tr>
+
+      <td id="bz_show_bug_column_1" class="bz_show_bug_column">
+        <table>
+          <tbody><tr id="field_tablerow_status">
+    <th class="field_label">
+      <a href="https://bugs.r-project.org/bugzilla/page.cgi?id=fields.html#bug_status">Status</a>:
+    </th>
+    <td id="bz_field_status">
+      <span id="static_bug_status">CLOSED
+          FIXED
+      </span>
+    </td>
+  </tr>
+<tr>
+    <td colspan="2" class="bz_section_spacer"></td>
+  </tr>
+<tr id="field_tablerow_alias"><th class="field_label " id="field_label_alias">
+
+
+  <a title="A short, unique name assigned to a bug in order to assist with looking it up and referring to it in other places in Bugzilla." class="field_help_link" href="https://bugs.r-project.org/bugzilla/page.cgi?id=fields.html#alias">Alias:</a>
+
+</th>
+    <td>
+        None
+    </td>
+  </tr>
+<tr>
+    <td colspan="2" class="bz_section_spacer"></td>
+  </tr>
+<tr id="field_tablerow_product"><th class="field_label " id="field_label_product">
+
+
+  <a title="Bugs are categorised into Products and Components." class="field_help_link" href="https://bugs.r-project.org/bugzilla/describecomponents.cgi">Product:</a>
+
+</th>
+  <td class="field_value " id="field_container_product">R
+
+</td>
+    </tr>
+
+
+    <tr id="field_tablerow_classification" class="bz_default_hidden"><th class="field_label " id="field_label_classification">
+
+
+  <a title="Bugs are categorised into Classifications, Products and Components. classifications is the top-level categorisation." class="field_help_link" href="https://bugs.r-project.org/bugzilla/page.cgi?id=fields.html#classification">Classification:</a>
+
+</th>
+  <td class="field_value " id="field_container_classification">Unclassified
+
+</td>
+    </tr>
+
+
+
+    <tr id="field_tablerow_component"><th class="field_label " id="field_label_component">
+
+
+  <a title="Components are second-level categories; each belongs to a particular Product. Select a Product to narrow down this list." class="field_help_link" href="https://bugs.r-project.org/bugzilla/describecomponents.cgi?product=R">Component:</a>
+
+</th>
+  <td class="field_value " id="field_container_component">I/O
+
+  (<a href="https://bugs.r-project.org/bugzilla/buglist.cgi?component=I%2FO&amp;product=R&amp;bug_status=__open__" target="_blank">show other bugs</a>)
+</td>
+    </tr>
+    <tr id="field_tablerow_version"><th class="field_label " id="field_label_version">
+
+
+  <a title="The version field defines the version of the software the bug was found in." class="field_help_link" href="https://bugs.r-project.org/bugzilla/page.cgi?id=fields.html#version">Version:</a>
+
+</th>
+<td>R 2.12.0
+  </td>
+    </tr>
+
+
+
+    <tr id="field_tablerow_rep_platform"><th class="field_label " id="field_label_rep_platform">
+
+
+  <a title="The hardware platform the bug was observed on. Note: When searching, selecting the option &quot;All&quot; only finds bugs whose value for this field is literally the word &quot;All&quot;." class="field_help_link" href="https://bugs.r-project.org/bugzilla/page.cgi?id=fields.html#rep_platform">Hardware:</a>
+
+</th>
+      <td class="field_value">ix86 (32-bit)
+        Windows 32-bit
+      </td>
+    </tr>
+          <tr>
+    <td colspan="2" class="bz_section_spacer"></td>
+  </tr>
+
+          <tr id="field_tablerow_importance">
+      <th class="field_label">
+        <label accesskey="i">
+          <a href="https://bugs.r-project.org/bugzilla/page.cgi?id=fields.html#importance"><u>I</u>mportance</a></label>:
+      </th>
+      <td>P5
+       normal
+      </td>
+    </tr>
+
+          <tr id="field_tablerow_assigned_to"><th class="field_label " id="field_label_assigned_to">
+
+
+  <a title="The person in charge of resolving the bug." class="field_help_link" href="https://bugs.r-project.org/bugzilla/page.cgi?id=fields.html#assigned_to">Assignee:</a>
+
+</th>
+      <td><span class="vcard"><a class="email" href="mailto:oz1bm@XXXX" title="Brian (oz1bm@XXXX)"> <span class="fn">Brian</span></a>
+</span>
+      </td>
+    </tr>
+
+    <script type="text/javascript">
+      assignToDefaultOnChange(['product', 'component'],
+        'R-core\x40R-project.org',
+        '');
+    </script>
+          <tr>
+    <td colspan="2" class="bz_section_spacer"></td>
+  </tr>
+          <tr id="field_tablerow_bug_file_loc"><th class="field_label " id="field_label_bug_file_loc">
+
+
+  <a title="Bugs can have a URL associated with them - for example, a pointer to a web site where the problem is seen." class="field_help_link" href="https://bugs.r-project.org/bugzilla/page.cgi?id=fields.html#bug_file_loc">URL:</a>
+
+</th>
+    <td>
+      <span id="bz_url_input_area">
+      </span>
+    </td>
+  </tr>
+
+
+
+    <tr id="field_tablerow_tag"><th class="field_label " id="field_label_tag">
+
+    <label for="tag">
+
+  <a title="Unlike Keywords which are global and visible by all users, Personal Tags are personal and can only be viewed and edited by their author. Editing them won&#39;t send any notification to other users. Use them to tag and keep track of bugs." class="field_help_link" href="https://bugs.r-project.org/bugzilla/page.cgi?id=fields.html#tag">Personal Tags:</a>
+</label>
+</th>
+  <td class="field_value " id="field_container_tag">
+      <input type="text" id="tag" size="40" class="text_input bz_autocomplete_values bz_autocomplete" name="tag" data-values="tag" value="" autocomplete="off">
+      <script type="text/javascript">
+        if (typeof BUGZILLA.autocomplete_values === 'undefined')
+          BUGZILLA.autocomplete_values = [];
+        BUGZILLA.autocomplete_values['tag'] = [];
+      </script>
+
+</td>
+    </tr>
+          <tr>
+    <td colspan="2" class="bz_section_spacer"></td>
+  </tr>
+
+
+<tr id="field_tablerow_dependson"><th class="field_label " id="field_label_dependson">
+
+
+  <a title="The bugs listed here must be resolved before this bug can be resolved." class="field_help_link" href="https://bugs.r-project.org/bugzilla/page.cgi?id=fields.html#dependson">Depends on:</a>
+
+</th>
+
+  <td>
+    <span id="dependson_input_area">
+    </span>
+
+  </td>
+  </tr>
+
+  <tr><th class="field_label " id="field_label_blocked">
+
+
+  <a title="This bug must be resolved before the bugs listed in this field can be resolved." class="field_help_link" href="https://bugs.r-project.org/bugzilla/page.cgi?id=fields.html#blocked">Blocks:</a>
+
+</th>
+
+  <td>
+    <span id="blocked_input_area">
+    </span>
+
+  </td>
+  </tr>
+
+        </tbody></table>
+      </td>
+      <td>
+        <div class="bz_column_spacer">&nbsp;</div>
+      </td>
+
+      <td id="bz_show_bug_column_2" class="bz_show_bug_column">
+        <table>
+        <tbody><tr id="field_tablerow_reported">
+    <th class="field_label">
+      Reported:
+    </th>
+    <td>2010-10-19 04:01 UTC by <span class="vcard"><a class="email" href="mailto:murdoch.duncan@XXXX" title="Duncan Murdoch (murdoch.duncan@XXXX)"> <span class="fn">Duncan Murdoch</span></a>
+</span>
+    </td>
+  </tr>
+
+  <tr id="field_tablerow_modified">
+    <th class="field_label">
+      Modified:
+    </th>
+    <td>2010-12-26 03:05 UTC
+      (<a href="https://bugs.r-project.org/bugzilla/show_activity.cgi?id=14414">History</a>)
+    </td>
+
+  </tr>
+<tr id="field_tablerow_cclist">
+      <th class="field_label">
+        <label for="newcc" accesskey="a">
+          CC List:
+        </label>
+      </th>
+      <td>
+            <input type="checkbox" id="addselfcc" name="addselfcc" checked="checked">
+            <label for="addselfcc">Add me to CC list</label>
+            <br> 0
+          users
+          <span id="cc_edit_area_showhide_container">
+            (<a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#" id="cc_edit_area_showhide">edit</a>)
+          </span>
+        <div id="cc_edit_area" class="bz_default_hidden">
+          <br>
+            <div>
+              <div><label for="cc"><b>Add</b></label></div><input name="newcc" value="" class="bz_userfield bz_autocomplete_user bz_autocomplete" size="30" id="newcc" data-multiple="1" autocomplete="off">
+            </div>
+        </div>
+          <script type="text/javascript">
+            hideEditableField( 'cc_edit_area_showhide_container',
+                               'cc_edit_area',
+                               'cc_edit_area_showhide',
+                               '',
+                               '');
+          </script>
+      </td>
+    </tr>
+<tr id="field_tablerow_bug_ignored">
+      <th class="field_label">
+        <label for="bug_ignored" title="Ignore all email for this bug">
+          Ignore Bug Mail:
+        </label>
+      </th>
+      <td>
+        <input type="hidden" name="defined_bug_ignored" value="1">
+        <span title="You will still receive emails for flag requests directed at you.">
+          <input type="checkbox" name="bug_ignored" id="bug_ignored" value="1">
+          (never email me about this bug)
+        </span>
+      </td>
+    </tr>
+<tr>
+    <td colspan="2" class="bz_section_spacer"></td>
+  </tr>
+<tr id="field_tablerow_see_also"><th class="field_label " id="field_label_see_also">
+
+
+  <a title="This allows you to refer to bugs in other installations. You can enter a URL to a bug in the &#39;Add Bug URLs&#39; field to note that that bug is related to this one. You can enter multiple URLs at once by separating them with whitespace. You should normally use this field to refer to bugs in other installations. For bugs in this installation, it is better to use the Depends on and Blocks fields." class="field_help_link" href="https://bugs.r-project.org/bugzilla/page.cgi?id=fields.html#see_also">See Also:</a>
+
+</th>
+  <td class="field_value " id="field_container_see_also">
+
+</td>
+    </tr>
+
+<tr>
+    <td colspan="2" class="bz_section_spacer"></td>
+  </tr>
+
+
+
+        </tbody></table>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="3">
+          <hr id="bz_top_half_spacer">
+      </td>
+    </tr>
+  </tbody></table>
+
+  <table id="bz_big_form_parts">
+  <tbody><tr>
+  <td>
+
+
+<script type="text/javascript">
+<!--
+function toggle_display(link) {
+    var table = document.getElementById("attachment_table");
+    var view_all = document.getElementById("view_all");
+    var hide_obsolete_url_parameter = "&hide_obsolete=1";
+    // Store current height for scrolling later
+    var originalHeight = table.offsetHeight;
+    var rows = YAHOO.util.Dom.getElementsByClassName(
+        'bz_tr_obsolete', 'tr', table);
+
+    for (var i = 0; i < rows.length; i++) {
+        bz_toggleClass(rows[i], 'bz_default_hidden');
+    }
+
+    if (YAHOO.util.Dom.hasClass(rows[0], 'bz_default_hidden')) {
+        link.innerHTML = "Show Obsolete";
+        view_all.href = view_all.href + hide_obsolete_url_parameter
+    }
+    else {
+        link.innerHTML = "Hide Obsolete";
+        view_all.href = view_all.href.replace(hide_obsolete_url_parameter,"");
+    }
+
+    var newHeight = table.offsetHeight;
+    // This scrolling makes the window appear to not move at all.
+    window.scrollBy(0, newHeight - originalHeight);
+
+    return false;
+}
+//-->
+</script>
+
+<br>
+<table id="attachment_table">
+  <tbody><tr id="a0">
+    <th colspan="2" class="left">
+      Attachments
+    </th>
+  </tr>
+
+
+      <tr id="a1" class="bz_contenttype_text_plain bz_tr_obsolete">
+        <td>
+          <b>
+              <span class="bz_obsolete">test web
+              </span>
+          </b>
+
+          <span class="bz_attach_extra_info">
+              (<em>deleted</em>)
+
+            <br>
+            <a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#attach_1162" title="Go to the comment associated with the attachment">2010-12-26 02:43 UTC</a>,
+
+            <span class="vcard"><a class="email" href="mailto:oz1bm@XXXX" title="Brian (oz1bm@XXXX)"> <span class="fn">Brian</span></a>
+</span>
+          </span>
+        </td>
+
+
+        <td>
+          <a href="https://bugs.r-project.org/bugzilla/attachment.cgi?id=1162&amp;action=edit">Details</a>
+        </td>
+      </tr>
+
+  <tr class="bz_attach_footer">
+    <td colspan="2">
+        <span class="bz_attach_view_hide">
+            <a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#a0" onclick="return toggle_display(this);">Hide Obsolete</a> (1)
+        </span>
+        <a href="https://bugs.r-project.org/bugzilla/attachment.cgi?bugid=14414&amp;action=enter">Add an attachment</a>
+        (proposed patch, testcase, etc.)
+    </td>
+  </tr>
+</tbody></table>
+<br>
+<div id="add_comment" class="bz_section_additional_comments">
+      <label for="comment" accesskey="c"><b>Additional
+        <u>C</u>omments</b></label>:
+
+
+      <!-- This table keeps the submit button aligned with the box. -->
+      <table><tbody><tr><td><div id="comment_tabs" role="tablist">
+    <div id="comment_tab" class="comment_tab active_comment_tab" role="tab" aria-selected="true" onclick="show_comment_edit()">Comment</div>
+    <div id="comment_preview_tab" class="comment_tab" role="tab" aria-selected="false" onclick="show_comment_preview(14414)">Preview</div>
+  </div>
+<textarea name="comment" id="comment" rows="10" cols="80" onfocus="this.rows=25"></textarea>
+
+  <div id="comment_preview" class="bz_default_hidden bz_comment">
+    <div id="comment_preview_loading" class="bz_default_hidden">Generating Preview...</div>
+    <div id="comment_preview_error" class="bz_default_hidden"></div>
+    <div id="comment_preview_text" class="bz_comment_text"></div>
+  </div>
+        <br><div class="knob-buttons">
+      <input type="submit" value="Save Changes" id="commit">
+    </div>
+
+
+        <table id="bug_status_bottom" class="status">
+          <tbody><tr>
+            <th class="field_label">
+              <a href="https://bugs.r-project.org/bugzilla/page.cgi?id=fields.html#bug_status">Status</a>:
+            </th>
+            <td><div id="status">CLOSED
+
+    <noscript><br>resolved&nbsp;as&nbsp;</noscript>
+
+  <span id="resolution_settings">FIXED
+  </span>
+
+</div>
+
+<script type="text/javascript">
+  var close_status_array = [
+      'CLOSED'
+  ];
+  YAHOO.util.Dom.removeClass('dup_id_discoverable', 'bz_default_hidden');
+  hideEditableField( "dup_id_container", "dup_id", 'dup_id_edit_action',
+                     'dup_id', '' )
+  showHideStatusItems( "",  ['',
+                             'CLOSED']);
+  YAHOO.util.Event.addListener( 'bug_status', "change", showHideStatusItems,
+                                ['',
+                                 'CLOSED']);
+  YAHOO.util.Event.addListener( 'resolution', "change", showDuplicateItem);
+  YAHOO.util.Event.addListener( 'dup_id_discoverable_action',
+                                'click',
+                                setResolutionToDuplicate,
+                                'CLOSED');
+  YAHOO.util.Event.addListener( window, 'load',  showHideStatusItems,
+                              ['',
+                               'CLOSED'] );
+
+</script>
+            </td>
+          </tr>
+        </tbody></table>
+      </td></tr></tbody></table>
+
+
+  </div>
+  </td>
+  <td>
+  </td>
+  </tr></tbody></table>
+
+
+  <div id="comments"><script type="text/javascript">
+  var replyCommentConfig = {
+      quote_replies : "quoted_reply",
+      is_insider : 0,
+      markdown_fetching_comment : "Fetching comment..."
+  };
+</script>
+
+
+  <script>hljs.initHighlightingOnLoad();</script>
+
+<!-- This auto-sizes the comments and positions the collapse/expand links
+     to the right. -->
+<table class="bz_comment_table">
+<tbody><tr>
+<td>
+<div id="c0" class="bz_comment bz_first_comment">
+
+      <div class="bz_first_comment_head">
+          <span class="bz_comment_actions">
+              [<a class="bz_reply_link" href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#add_comment" onclick="
+                    replyToComment(&#39;0&#39;, &#39;84859&#39;, &#39;(In reply to Duncan Murdoch from comment #0)&#39;, null); return false;">reply</a>]
+            <script type="text/javascript">
+              addCollapseLink(0, 0, 'Toggle comment display');
+            </script> <a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#" class="bz_collapse_comment" id="comment_link_0" onclick="toggle_comment_display(this, 0); return false;" title="Toggle comment display">[−]</a>
+          </span>
+
+
+        <span class="bz_comment_number">
+          <a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#c0">Description</a>
+        </span>
+
+        <span class="bz_comment_user">
+          <span class="vcard"><a class="email" href="mailto:murdoch.duncan@XXXX" title="Duncan Murdoch (murdoch.duncan@XXXX)"> <span class="fn">Duncan Murdoch</span></a>
+</span>
+        </span>
+
+        <span class="bz_comment_user_images">
+        </span>
+
+        <span class="bz_comment_time">
+          2010-10-19 04:01:49 UTC
+        </span>
+
+      </div>
+
+
+        <div id="comment_tag_0" class="bz_comment_tags">
+          <span id="ct_0" class="bz_default_hidden">
+          </span>
+        </div>
+
+
+<pre class="bz_comment_text" id="comment_text_0">Running
+
+download.file("<a href="http://example.com/junk.txt">http://example.com/junk.txt</a>", "output.txt")
+
+will generate errors after opening the "output.txt" file, and leaves the file handle open.  In Windows this results in a new file that can't be deleted until R closes.</pre>
+    </div>
+
+    <div id="c1" class="bz_comment">
+
+      <div class="bz_comment_head">
+          <span class="bz_comment_actions">
+              [<a class="bz_reply_link" href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#add_comment" onclick="
+                    replyToComment(&#39;1&#39;, &#39;84863&#39;, &#39;(In reply to Brian Ripley from comment #1)&#39;, null); return false;">reply</a>]
+            <script type="text/javascript">
+              addCollapseLink(1, 0, 'Toggle comment display');
+            </script> <a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#" class="bz_collapse_comment" id="comment_link_1" onclick="toggle_comment_display(this, 1); return false;" title="Toggle comment display">[−]</a>
+          </span>
+
+
+        <span class="bz_comment_number">
+          <a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#c1">Comment 1</a>
+        </span>
+
+        <span class="bz_comment_user">
+          <span class="vcard"><a class="email" href="mailto:ripley@XXXX" title="Brian Ripley (ripley@XXXX)"> <span class="fn">Brian Ripley</span></a>
+</span>
+        </span>
+
+        <span class="bz_comment_user_images">
+        </span>
+
+        <span class="bz_comment_time">
+          2010-10-19 22:21:43 UTC
+        </span>
+
+      </div>
+
+
+        <div id="comment_tag_1" class="bz_comment_tags">
+          <span id="ct_1" class="bz_default_hidden">
+          </span>
+        </div>
+
+
+<pre class="bz_comment_text" id="comment_text_1">I believe I have fixed this, but I cannot actually reproduce it.  Can
+you try r53369?
+
+BTW to Simon: the trunk is 2.13.0-to-be, and has been for a month.
+
+On Mon, 18 Oct 2010, <a href="mailto:r-bugs@r-project.org">r-bugs@r-project.org</a> wrote:
+
+<span class="quote">&gt; <a href="https://bugs.r-project.org/bugzilla3/show_bug.cgi?id=14414">https://bugs.r-project.org/bugzilla3/show_bug.cgi?id=14414</a></span>
+&gt;
+<span class="quote">&gt;           Summary: download.file() leaves destination file open on error
+&gt;           Product: R
+&gt;           Version: R-devel (trunk, R 2.12.0-to-be)
+&gt;          Platform: PC/x86
+&gt;        OS/Version: Windows
+&gt;            Status: NEW
+&gt;          Severity: normal
+&gt;          Priority: P5
+&gt;         Component: I/O
+&gt;        AssignedTo: <a href="mailto:R-core@R-project.org">R-core@R-project.org</a>
+&gt;        ReportedBy: <a href="mailto:murdoch@XXXX">murdoch@XXXX</a>
+&gt;   Estimated Hours: 0.0</span>
+&gt;
+&gt;
+<span class="quote">&gt; Running</span>
+&gt;
+<span class="quote">&gt; download.file("<a href="http://example.com/junk.txt">http://example.com/junk.txt</a>", "output.txt")</span>
+&gt;
+<span class="quote">&gt; will generate errors after opening the "output.txt" file, and leaves the file
+&gt; handle open.  In Windows this results in a new file that can't be deleted
+&gt; until
+&gt; R closes.</span>
+&gt;
+<span class="quote">&gt; --
+&gt; Configure bugmail:
+&gt; <a href="https://bugs.r-project.org/bugzilla3/userprefs.cgi?tab=email">https://bugs.r-project.org/bugzilla3/userprefs.cgi?tab=email</a>
+&gt; ------- You are receiving this mail because: -------
+&gt; You are the assignee for the bug.</span>
+&gt;
+<span class="quote">&gt; _______________________________________________
+&gt; R-core list: <a href="https://stat.ethz.ch/mailman/listinfo/r-core">https://stat.ethz.ch/mailman/listinfo/r-core</a></span>
+&gt;
+
+--
+Brian D. Ripley,                  <a href="mailto:ripley@XXXX">ripley@XXXX</a>
+Professor of Applied Statistics,  <a href="http://www.stats.ox.ac.uk/~ripley/">http://www.stats.ox.ac.uk/~ripley/</a>
+University of Oxford,             Tel:  +XX XXXX XXXXXX (self)
+1 South Parks Road,                     +XX XXXX XXXXXX (PA)
+Oxford OX1 3TG, UK                Fax:  +XX XXXX XXXXXX</pre>
+    </div>
+
+    <div id="c2" class="bz_comment">
+
+      <div class="bz_comment_head">
+          <span class="bz_comment_actions">
+              [<a class="bz_reply_link" href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#add_comment" onclick="
+                    replyToComment(&#39;2&#39;, &#39;84865&#39;, &#39;(In reply to Duncan Murdoch from comment #2)&#39;, null); return false;">reply</a>]
+            <script type="text/javascript">
+              addCollapseLink(2, 0, 'Toggle comment display');
+            </script> <a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#" class="bz_collapse_comment" id="comment_link_2" onclick="toggle_comment_display(this, 2); return false;" title="Toggle comment display">[−]</a>
+          </span>
+
+
+        <span class="bz_comment_number">
+          <a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#c2">Comment 2</a>
+        </span>
+
+        <span class="bz_comment_user">
+          <span class="vcard"><a class="email" href="mailto:murdoch.duncan@XXXX" title="Duncan Murdoch (murdoch.duncan@XXXX)"> <span class="fn">Duncan Murdoch</span></a>
+</span>
+        </span>
+
+        <span class="bz_comment_user_images">
+        </span>
+
+        <span class="bz_comment_time">
+          2010-10-19 23:09:10 UTC
+        </span>
+
+      </div>
+
+
+        <div id="comment_tag_2" class="bz_comment_tags">
+          <span id="ct_2" class="bz_default_hidden">
+          </span>
+        </div>
+
+
+<pre class="bz_comment_text" id="comment_text_2">  On 19/10/2010 1:21 PM, Prof Brian Ripley wrote:
+<span class="quote">&gt; I believe I have fixed this, but I cannot actually reproduce it.  Can
+&gt; you try r53369?</span>
+
+Yes, looks fixed here.  Thanks.
+
+Duncan Murdoch
+
+<span class="quote">&gt; BTW to Simon: the trunk is 2.13.0-to-be, and has been for a month.</span>
+&gt;
+<span class="quote">&gt; On Mon, 18 Oct 2010, <a href="mailto:r-bugs@r-project.org">r-bugs@r-project.org</a> wrote:</span>
+&gt;
+<span class="quote">&gt; &gt;  <a href="https://bugs.r-project.org/bugzilla3/show_bug.cgi?id=14414">https://bugs.r-project.org/bugzilla3/show_bug.cgi?id=14414</a>
+&gt; &gt;
+&gt; &gt;            Summary: download.file() leaves destination file open on error
+&gt; &gt;            Product: R
+&gt; &gt;            Version: R-devel (trunk, R 2.12.0-to-be)
+&gt; &gt;           Platform: PC/x86
+&gt; &gt;         OS/Version: Windows
+&gt; &gt;             Status: NEW
+&gt; &gt;           Severity: normal
+&gt; &gt;           Priority: P5
+&gt; &gt;          Component: I/O
+&gt; &gt;         AssignedTo: <a href="mailto:R-core@R-project.org">R-core@R-project.org</a>
+&gt; &gt;         ReportedBy: <a href="mailto:murdoch@XXXX">murdoch@XXXX</a>
+&gt; &gt;    Estimated Hours: 0.0
+&gt; &gt;
+&gt; &gt;
+&gt; &gt;  Running
+&gt; &gt;
+&gt; &gt;  download.file("<a href="http://example.com/junk.txt">http://example.com/junk.txt</a>", "output.txt")
+&gt; &gt;
+&gt; &gt;  will generate errors after opening the "output.txt" file, and leaves the
+&gt; file
+&gt; &gt;  handle open.  In Windows this results in a new file that can't be deleted
+&gt; until
+&gt; &gt;  R closes.
+&gt; &gt;
+&gt; &gt;  --
+&gt; &gt;  Configure bugmail:
+&gt; <a href="https://bugs.r-project.org/bugzilla3/userprefs.cgi?tab=email">https://bugs.r-project.org/bugzilla3/userprefs.cgi?tab=email</a>
+&gt; &gt;  ------- You are receiving this mail because: -------
+&gt; &gt;  You are the assignee for the bug.
+&gt; &gt;
+&gt; &gt;  _______________________________________________
+&gt; &gt;  R-core list: <a href="https://stat.ethz.ch/mailman/listinfo/r-core">https://stat.ethz.ch/mailman/listinfo/r-core</a>
+&gt; &gt;</span>
+&gt;</pre>
+    </div>
+
+    <div id="c3" class="bz_comment">
+
+      <div class="bz_comment_head">
+          <span class="bz_comment_actions">
+              [<a class="bz_reply_link" href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#add_comment" onclick="
+                    replyToComment(&#39;3&#39;, &#39;84870&#39;, &#39;(In reply to Brian Ripley from comment #3)&#39;, null); return false;">reply</a>]
+            <script type="text/javascript">
+              addCollapseLink(3, 0, 'Toggle comment display');
+            </script> <a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#" class="bz_collapse_comment" id="comment_link_3" onclick="toggle_comment_display(this, 3); return false;" title="Toggle comment display">[−]</a>
+          </span>
+
+
+        <span class="bz_comment_number">
+          <a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#c3">Comment 3</a>
+        </span>
+
+        <span class="bz_comment_user">
+          <span class="vcard"><a class="email" href="mailto:ripley@XXXX" title="Brian Ripley (ripley@XXXX)"> <span class="fn">Brian Ripley</span></a>
+</span>
+        </span>
+
+        <span class="bz_comment_user_images">
+        </span>
+
+        <span class="bz_comment_time">
+          2010-10-20 04:45:38 UTC
+        </span>
+
+      </div>
+
+
+        <div id="comment_tag_3" class="bz_comment_tags">
+          <span id="ct_3" class="bz_default_hidden">
+          </span>
+        </div>
+
+
+<pre class="bz_comment_text" id="comment_text_3">Fixed in 2.12.0 patched</pre>
+    </div>
+
+    <div id="c4" class="bz_comment">
+
+      <div class="bz_comment_head">
+          <span class="bz_comment_actions">
+              [<a class="bz_reply_link" href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#add_comment" onclick="
+                    replyToComment(&#39;4&#39;, &#39;85019&#39;, &#39;(In reply to Brian from comment #4)&#39;, null); return false;">reply</a>]
+            <script type="text/javascript">
+              addCollapseLink(4, 0, 'Toggle comment display');
+            </script> <a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#" class="bz_collapse_comment" id="comment_link_4" onclick="toggle_comment_display(this, 4); return false;" title="Toggle comment display">[−]</a>
+          </span>
+
+
+        <span class="bz_comment_number">
+          <a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#c4">Comment 4</a>
+        </span>
+
+        <span class="bz_comment_user">
+          <span class="vcard"><a class="email" href="mailto:XXXX" title="Brian (oz1bm@XXXX)"> <span class="fn">Brian</span></a>
+</span>
+        </span>
+
+        <span class="bz_comment_user_images">
+        </span>
+
+        <span class="bz_comment_time">
+          2010-12-26 02:43:15 UTC
+        </span>
+
+      </div>
+
+
+        <div id="comment_tag_4" class="bz_comment_tags">
+          <span id="ct_4" class="bz_default_hidden">
+          </span>
+        </div>
+
+
+<pre class="bz_comment_text" id="comment_text_4">Created <span class="bz_obsolete"><a href="https://bugs.r-project.org/bugzilla/attachment.cgi?id=1162" name="attach_1162" title="test web">attachment 1162</a> <a href="https://bugs.r-project.org/bugzilla/attachment.cgi?id=1162&amp;action=edit" title="test web">[details]</a></span>
+test web</pre>
+    </div>
+
+    <div id="c5" class="bz_comment">
+
+      <div class="bz_comment_head">
+          <span class="bz_comment_actions">
+              [<a class="bz_reply_link" href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#add_comment" onclick="
+                    replyToComment(&#39;5&#39;, &#39;85020&#39;, &#39;(In reply to Duncan Murdoch from comment #5)&#39;, null); return false;">reply</a>]
+            <script type="text/javascript">
+              addCollapseLink(5, 0, 'Toggle comment display');
+            </script> <a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#" class="bz_collapse_comment" id="comment_link_5" onclick="toggle_comment_display(this, 5); return false;" title="Toggle comment display">[−]</a>
+          </span>
+
+
+        <span class="bz_comment_number">
+          <a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#c5">Comment 5</a>
+        </span>
+
+        <span class="bz_comment_user">
+          <span class="vcard"><a class="email" href="mailto:murdoch.duncan@XXXX" title="Duncan Murdoch (murdoch.duncan@XXXX)"> <span class="fn">Duncan Murdoch</span></a>
+</span>
+        </span>
+
+        <span class="bz_comment_user_images">
+        </span>
+
+        <span class="bz_comment_time">
+          2010-12-26 03:05:19 UTC
+        </span>
+
+      </div>
+
+
+        <div id="comment_tag_5" class="bz_comment_tags">
+          <span id="ct_5" class="bz_default_hidden">
+          </span>
+        </div>
+
+
+<pre class="bz_comment_text" id="comment_text_5">The content of <span class="bz_obsolete"><a href="https://bugs.r-project.org/bugzilla/attachment.cgi?id=1162" name="attach_1162" title="test web">attachment 1162</a> <a href="https://bugs.r-project.org/bugzilla/attachment.cgi?id=1162&amp;action=edit" title="test web">[details]</a></span> has been deleted by
+    Duncan Murdoch &lt;<a href="mailto:murdoch@XXXX">murdoch@XXXX</a>&gt;
+without providing any reason.
+
+The token used to delete this attachment was generated at 2010-12-25 21:05:14 EST.</pre>
+    </div>
+
+  <div class="bz_add_comment">
+    <a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#" onclick="return goto_add_comments();">
+       Add Comment</a>
+  </div>
+
+
+
+</td>
+<td>
+    <ul class="bz_collapse_expand_comments">
+      <li><a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#" onclick="toggle_all_comments(&#39;collapse&#39;);
+                               return false;">Collapse All Comments</a></li>
+      <li><a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#" onclick="toggle_all_comments(&#39;expand&#39;);
+                               return false;">Expand All Comments</a></li>
+        <li><div id="comment_tags_collapse_expand_container"></div></li>
+    </ul>
+</td>
+</tr></tbody></table>
+  </div>
+
+
+</form>
+
+<hr>
+<ul class="related_actions">
+    <li><a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?format=multiple&amp;id=14414">Format For Printing</a></li>
+    <li>&nbsp;-&nbsp;<a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?ctype=xml&amp;id=14414">XML</a></li>
+    <li>&nbsp;-&nbsp;<a href="https://bugs.r-project.org/bugzilla/enter_bug.cgi?cloned_bug_id=14414">Clone This Bug</a></li>
+
+    <li>&nbsp;-&nbsp;<a href="https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414#">Top of page </a></li>
+    </ul>
+
+<br>
+</main>
+
+    <footer id="footer">
+      <div class="intro"></div>
+
+      <nav><ul id="useful-links">
+  <li id="links-actions"><ul class="links">
+  <li><a href="https://bugs.r-project.org/bugzilla/">Home</a></li>
+  <li><span class="separator">| </span><a href="https://bugs.r-project.org/bugzilla/enter_bug.cgi">New</a></li>
+  <li><span class="separator">| </span><a href="https://bugs.r-project.org/bugzilla/describecomponents.cgi">Browse</a></li>
+  <li><span class="separator">| </span><a href="https://bugs.r-project.org/bugzilla/query.cgi">Search</a></li>
+
+  <li class="form">
+    <span class="separator">| </span>
+    <form action="https://bugs.r-project.org/bugzilla/buglist.cgi" method="get" onsubmit="if (this.quicksearch.value == &#39;&#39;)
+                  { alert(&#39;Please enter one or more search terms first.&#39;);
+                    return false; } return true;">
+    <input type="hidden" id="no_redirect_bottom" name="no_redirect" value="1">
+    <script type="text/javascript">
+      if (history && history.replaceState) {
+        var no_redirect = document.getElementById("no_redirect_bottom");
+        no_redirect.value = 1;
+      }
+    </script>
+    <input class="txt" type="text" id="quicksearch_bottom" name="quicksearch" title="Quick Search" value="">
+    <input class="btn" type="submit" value="Search" id="find_bottom"></form>
+  <a href="https://bugs.r-project.org/bugzilla/page.cgi?id=quicksearch.html" title="Quicksearch Help">[?]</a></li>
+
+  <li><span class="separator">| </span><a href="https://bugs.r-project.org/bugzilla/report.cgi">Reports</a></li>
+
+  <li></li>
+
+
+    <li><span class="separator">| </span><a href="https://bugs.r-project.org/bugzilla/userprefs.cgi">Preferences</a></li>
+<li>
+        <span class="separator">| </span>
+        <a href="https://bugzilla.readthedocs.org/en/latest/using/understanding.html" target="_blank">Help</a>
+      </li>
+
+    <li>
+      <span class="separator">| </span>
+        <a href="https://bugs.r-project.org/bugzilla/index.cgi?logout=1">Log&nbsp;out</a>
+        michaelchirico4@XXXX</li>
+</ul>
+  </li>
+
+
+
+    <li id="links-saved">
+      <ul class="links">
+          <li>
+            <a href="https://bugs.r-project.org/bugzilla/buglist.cgi?resolution=---&amp;emailassigned_to1=1&amp;emailreporter1=1&amp;emailtype1=exact&amp;email1=michaelchirico4%40gmail.com">My Bugs</a>
+          </li>
+
+      </ul>
+    </li>
+
+
+
+
+</ul>
+      </nav>
+
+      <div class="outro"></div>
+    </footer>
+
+
+<div class="autocomplete-suggestions" style="position: absolute; display: none; max-height: 300px; z-index: 9999;"></div><div class="autocomplete-suggestions" style="position: absolute; display: none; max-height: 300px; z-index: 9999;"></div></body></html>
