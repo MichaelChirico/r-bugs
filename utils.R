@@ -169,12 +169,12 @@ html_nodes_clean = function(x, xpath, ...)
   html_text_clean(html_nodes(x, xpath = xpath), ...)
 
 # BZ#14005 has a massive description. GitHub API limits to 2^16 characters
-MAX_CHAR = 65536L
+MAX_BODY_SIZE = 65536L
 txt_truncate = function(x, BUFFER) {
-  if (nchar(x) + BUFFER > MAX_CHAR) { # BUFFER is the rest of the issue text
+  if (nchar(x) + BUFFER > MAX_BODY_SIZE) { # BUFFER is the rest of the issue text
     trunc_msg = '\n-------\n## MESSAGE TRUNCATED. SEE BUGZILLA'
     return(paste0(
-      substr(x, 1L, MAX_CHAR - BUFFER - nchar(trunc_msg)),
+      substr(x, 1L, MAX_BODY_SIZE - BUFFER - nchar(trunc_msg)),
       trunc_msg
     ))
   }
@@ -295,10 +295,16 @@ get_bug_data = function(bug_page) {
 
 # ---- MIRRORING UTILITIES ----
 # some rules for mapping label names as read into a more useful label name
+MAX_LABEL_SIZE = 50L
 relabel = function(labels) {
   # format on Bugzilla is CLOSED DUPLICATE of bug XXXXX
   if (any(idx <- grepl('CLOSED DUPLICATE', labels, fixed = TRUE))) {
     labels[idx] = 'Status - CLOSED DUPLICATE'
+  }
+  # maximum label size on GitHub is 50 characters;
+  #  bites for [Hardware - x86_64/x64/amd64 (64-bit) Windows 64-bit], e.g. from BZ#14502
+  if (any(idx <- nchar(labels) > MAX_LABEL_SIZE)) {
+    labels[idx] = substr(labels[idx], 1L, MAX_LABEL_SIZE)
   }
   labels
 }
@@ -467,7 +473,7 @@ build_body = function(params) {
     list(modified_txt, related_txt, attachment_txt)
   )
   out = do.call(sprintf, unname(fmt_args))
-  if (nchar(out) > MAX_CHAR) {
+  if (nchar(out) > MAX_BODY_SIZE) {
     fmt_args$text = txt_truncate(fmt_args$text, nchar(out) - nchar(fmt_args$text))
     out = do.call(sprintf, unname(fmt_args))
   }
@@ -520,7 +526,7 @@ create_comment = function(comment, attachment_info, issue_id, dryrun = FALSE) {
     list(attachment_txt)
   )
   body = do.call(sprintf, unname(fmt_args))
-  if (nchar(body) > MAX_CHAR) {
+  if (nchar(body) > MAX_BODY_SIZE) {
     fmt_args$text = txt_truncate(fmt_args$text, nchar(body) - nchar(fmt_args$text))
     body = do.call(sprintf, unname(fmt_args))
   }
