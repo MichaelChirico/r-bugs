@@ -286,10 +286,19 @@ get_bug_data = function(bug_page) {
 }
 
 # ---- MIRRORING UTILITIES ----
+# some rules for mapping label names as read into a more useful label name
+relabel = function(labels) {
+  # format on Bugzilla is CLOSED DUPLICATE of bug XXXXX
+  if (any(idx <- grepl('CLOSED DUPLICATE', labels, fixed = TRUE))) {
+    labels[idx] = 'Status - CLOSED DUPLICATE'
+  }
+  labels
+}
 # check if we've seen this label. if not, create the label with a random color.
 #   If so, update its observation count. Once a label reaches 10 times observed,
 #   it gets POSTed to GitHub.
 update_label = function(label, bz_id, dryrun = FALSE) {
+  label = relabel(label)
   # this label is known; update its frequency
   if (label %chin% labelDF$name) {
     labelDF[.(name = label), on = 'name', c('n_observed', 'seed_issues') := {
@@ -469,8 +478,9 @@ create_issue = function(params, dryrun=FALSE) {
     title = sprintf("[BUGZILLA #%d] %s", params$id, params$summary),
     body = build_body(params)
   )
+  labels = paste(TAG_FIELDS, '-', unlist(params[tolower(TAG_FIELDS)]))
   labels = labelDF[
-    i = .(name = paste(TAG_FIELDS, '-', unlist(params[tolower(TAG_FIELDS)]))),
+    i = .(name = relabel(labels)),
     on = 'name', name[n_observed >= 10L]
   ]
   # as.list needed -- length-1 input fails

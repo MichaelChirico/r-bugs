@@ -1,7 +1,7 @@
 # BACK-FILLING BUG REPORTS INCREMENTALLY [[OFFLINE]]
 URL = 'https://bugs.r-project.org/bugzilla'
 BUG_URL_STEM = file.path(URL, 'show_bug.cgi?id=')
-MAX_BUGS_TO_READ = 21L
+MAX_BUGS_TO_READ = 500L
 
 source('utils.R')
 library(gh)
