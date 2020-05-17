@@ -32,7 +32,7 @@ for (ii in seq_along(to_process)) {
   bug_i = to_process[ii]
   # ---- 1. EXTRACT BUG DATA FROM PAGE ----
   bz_id = bugDF$bugzilla_id[bug_i]
-  cat('\rProcessing Bugzilla #', bz_id, ', ', length(to_process)-ii, ' to go')
+  cat('\rProcessing Bugzilla #', bz_id, ', ', length(to_process)-ii, ' to go', sep = '')
   bug = get_bug_data(jump_to(session, paste0(BUG_URL_STEM, bz_id)))
 
   # ---- 2. UPDATE LABEL DATA ----

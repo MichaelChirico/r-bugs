@@ -200,6 +200,14 @@ get_attachment_info = function(a) {
   link = html_node(a,
     xpath = './/a[contains(@href, "cgi") and not(contains(@href, "action=edit"))]'
   )
+  # attachment was deleted & marked as "obsolete" on BZ#14414
+  if (is.na(link) && length(html_node(a, xpath = '//span[@class="bz_obsolete"]'))) {
+    return(list(
+      title = '<OBSOLETE ATTACHMENT; SEE BUGZILLA>',
+      url = '', id = '', author = '', timestamp = '',
+      comment_anchor = '', extra_info = ''
+    ))
+  }
   url = file.path(URL, html_attr(link, 'href'))
 
   meta = html_node(a, xpath = './/span[@class="bz_attach_extra_info"]')
