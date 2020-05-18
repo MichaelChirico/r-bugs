@@ -301,6 +301,11 @@ relabel = function(labels) {
   if (any(idx <- grepl('CLOSED DUPLICATE', labels, fixed = TRUE))) {
     labels[idx] = 'Status - CLOSED DUPLICATE'
   }
+  # 'Mac OS X' uses 4 redundant characters; with the 50-character constraint
+  #   coming up next, this was leading to 10.5, 10.6, etc being combined
+  if (any(idx <- grepl('Mac OS X', labels, fixed = TRUE))) {
+    labels[idx] = gsub('Mac OS X', 'OS X', labels, fixed = TRUE)
+  }
   # maximum label size on GitHub is 50 characters;
   #  bites for [Hardware - x86_64/x64/amd64 (64-bit) Windows 64-bit], e.g. from BZ#14502
   if (any(idx <- nchar(labels) > MAX_LABEL_SIZE)) {

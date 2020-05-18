@@ -13,3 +13,6 @@ template-pages/bug-00003.html
 template-pages/bug-00052.html
 template-pages/bug-00065.html
 
+# Apple :(
+.DS_Store
+
