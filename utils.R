@@ -304,7 +304,7 @@ relabel = function(labels) {
   # 'Mac OS X' uses 4 redundant characters; with the 50-character constraint
   #   coming up next, this was leading to 10.5, 10.6, etc being combined
   if (any(idx <- grepl('Mac OS X', labels, fixed = TRUE))) {
-    labels[idx] = gsub('Mac OS X', 'OS X', labels, fixed = TRUE)
+    labels[idx] = gsub('Mac OS X', 'OS X', labels[idx], fixed = TRUE)
   }
   # maximum label size on GitHub is 50 characters;
   #  bites for [Hardware - x86_64/x64/amd64 (64-bit) Windows 64-bit], e.g. from BZ#14502
@@ -418,14 +418,23 @@ COMMENT_TEMPLATE = "%s
  - Timestamp - %s%s
 "
 
-build_attachment_txt = function(title, info) {
+# In some cases, e.g. BZ#16356, a referred attachment could be deleted
+#   or have its info on another bug's page. _maybe_ could have kept a separate
+#   DB mapping attachment IDs to Bugzilla issue numbers, but it's pretty late
+#   in the game for that... maybe something to PATCH later?
+build_attachment_txt = function(title, info, backup_href) {
   if (is.null(title) || is.na(title)) return('')
   idx = which(sapply(info, `[[`, 'comment_anchor') == title)
-  if (!length(idx)) return(NULL)
-  with(
-    info[[idx]],
-    sprintf(ATTACHMENT_TEMPLATE, id, author, url, timestamp, extra_info)
-  )
+  if (!length(idx)) {
+    params = list(
+      id = as.integer(gsub('.*[?]id=', '', backup_href)),
+      author = '&lt;SEE BUGZILLA>', url = file.path(URL, backup_href),
+      timestamp = '?', extra_info = '?'
+    )
+  } else {
+    params = info[[idx]]
+  }
+  with(params, sprintf(ATTACHMENT_TEMPLATE, id, author, url, timestamp, extra_info))
 }
 
 build_body = function(params) {
@@ -463,7 +472,8 @@ build_body = function(params) {
 
   attachment_txt = build_attachment_txt(
     params$description_info$attachment_title,
-    params$attachment_info
+    params$attachment_info,
+    params$description_info$attachment_href
   )
 
   param_fields = c(
@@ -516,15 +526,12 @@ close_issue = function(issue_id) {
 }
 
 create_comment = function(comment, attachment_info, issue_id, dryrun = FALSE) {
-  attachment_txt = build_attachment_txt(comment$attachment_title, attachment_info)
-  # _maybe_ could have kept a separate DB mapping attachment IDs to Bugzilla issue
-  #   numbers, but it's pretty late in the game for that... maybe something to PATCH later?
-  if (is.null(attachment_txt)) {
-    id = as.integer(gsub('.*[?]id=', '', comment$attachment_href))
-    attachment_txt = sprintf(ATTACHMENT_TEMPLATE,
-      id, '&lt;SEE BUGZILLA>', file.path(URL, comment$attachment_href), '?', '?'
-    )
-  }
+  attachment_txt = build_attachment_txt(
+    comment$attachment_title,
+    attachment_info,
+    comment$attachment_href
+  )
+
   fmt_args = c(
     list(COMMENT_TEMPLATE),
     comment[c('text', 'author', 'timestamp')],
