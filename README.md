@@ -4,9 +4,9 @@ The [R project](https://www.r-project.org/) uses [Bugzilla](https://bugs.r-proje
 
 > due to abuse by spammers, since 2016-07-09, only "members" (including all who have previously submitted bugs) can submit new bugs on R's Bugzilla.
 
-An unfortunate side effect of this policy is reduced transparency to the universe of R users, many of whom are insufficiently motivated to open a Bugzilla account. These users may nevertheless benefit from observing the activity on the issue tracker, perhaps to understand if an unexpected behavior has been reported by other users, or to observe how the R language updates.
+An unfortunate side effect of this policy is reduced transparency to the universe of R users, for many of whom the Bugzilla interface is unfamiliar at a minimum and perhaps intimidating/offputting. These users may nevertheless benefit from observing the activity on the issue tracker, perhaps to understand if an unexpected behavior has been reported by other users, or to observe how the R language updates.
 
-This repository exists to help bridge that gap -- the official bug tracker is mirrored here to offer a read-only snapshot for general perusal.
+This repository exists to help bridge that gap -- the official bug tracker is mirrored here to offer a read-only snapshot in a format more familiar to a broader community of users.
 
 ## See https://github.com/wch/r-source for a read-only mirror of the R source code
 
