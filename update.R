@@ -1,6 +1,7 @@
 # INCREMENTAL UPDATES OF ISSUES [[ONLINE]]
 URL = 'https://bugs.r-project.org/bugzilla'
 BUG_URL_STEM = file.path(URL, 'show_bug.cgi?id=')
+UTC_DATE = as.Date(format(Sys.time(), tz = 'UTC'))
 
 source('utils.R')
 library(data.table)
@@ -22,36 +23,60 @@ labelDF =  fread(label_file)
 # there will be some double counting of updated bugs which were updated before
 #   backfill reached them, but after initialize is run, but the issue tracker
 #   isn't massively active, so these edge cases are minimal.
-recent_date = as.IDate(readLines(last_exec_date_file))
+recent_date = as.POSIXct(as.IDate(readLines(last_exec_date_file)), tz = 'UTC')
 
 # built into slightly-more-readable format from the advanced search page results...
+#   NB: earlier, tried building a query URL based on one produced using
+#   the "Search By Change History" feature of Bugzilla Search page, but this
+#   was missing some results. I think the following query includes new comments
+#   in the change timestamp, whereas the previous one does not (and I don't see a way)
+statuses = c(
+  'UNCONFIRMED', 'NEW', 'WISH', 'ASSIGNED',
+  'REOPENED', 'RESOLVED', 'VERIFIED', 'CLOSED'
+)
 updated_bug_url = paste0(
   file.path(URL, 'buglist.cgi?'),
-  paste(
-    collapse = '&',
-    c(
-      paste(
-        sep = '=',
-        'chfield',
-        sapply(FUN = URLencode, reserved = TRUE, USE.NAMES = FALSE, c(
-          "[Bug creation]", "assigned_to", "bug_file_loc", "bug_severity",
-          "bug_status", "cclist_accessible", "component", "deadline",
-          "everconfirmed", "op_sys", "priority", "product", "qa_contact",
-          "rep_platform", "reporter_accessible", "resolution", "short_desc",
-          "status_whiteboard", "target_milestone", "version", "votes"
-        ))
-      ),
-      format(recent_date, 'chfieldfrom=%F'),
-      'chfieldto=Now', 'query_format=advanced'
-    )
-  )
+  paste(collapse = '&', c(
+    paste0('bug_status=', statuses),
+    'order=bugs.delta_ts%20desc',
+    'query_format=advanced'
+  ))
 )
 
 # multiple links to each bug in each search result row -- we _could_
 #   test that the text() is a number: string(number(text())) != "NaN" --
 #   but this is overkill for a small set of results. Just use unique & move on
-updated_bug_paths = jump_to(session, updated_bug_url) %>%
-  html_nodes(xpath = '//a[contains(@href, "show_bug.cgi")]') %>%
+#   tr[td] -> exclude header row, which doesn't have td children
+results = jump_to(session, updated_bug_url) %>%
+  html_nodes(xpath = '//table[@class="bz_buglist"]/tr[td]')
+update_times = results %>%
+  html_node(xpath = 'td[@class="bz_changeddate_column nowrap"]') %>%
+  html_text_clean
+
+update_timestamps = .POSIXct(rep(NA_real_, length(update_times)), tz = 'UTC')
+for (fmt in c('%T', '%a %H:%M', '%F')) {
+  unmatched_idx = is.na(update_timestamps)
+  # as.POSIXct doesn't infer the correct date here (it does for the other fmts)
+  if (fmt == '%a %H:%M') {
+    # keep this so as not to update the original
+    tmp = update_times[unmatched_idx]
+    # find those times that match the %a %H:%M format
+    match_dow = !is.na(as.POSIXct(tmp, format = fmt, tz = 'UTC'))
+    if (!any(match_dow)) next
+    prev_week = UTC_DATE - 0:6
+    dowDT = data.table(dow = format(prev_week, '%a'), YMD = format(prev_week))
+    for (ii in seq_len(nrow(dowDT))) {
+      tmp[match_dow] = with(dowDT[ii], gsub(dow, YMD, tmp[match_dow], fixed = TRUE))
+    }
+    timestamp = as.POSIXct(tmp, '%F %H:%M', tz = 'UTC')
+  } else {
+    timestamp = as.POSIXct(update_times[unmatched_idx], format = fmt, tz = 'UTC')
+  }
+  update_timestamps[unmatched_idx] = timestamp
+}
+
+updated_bug_paths = results[update_timestamps >= recent_date] %>%
+  html_nodes(xpath = './/a[contains(@href, "show_bug.cgi")]') %>%
   html_attr('href') %>% unique
 
 for (ii in seq_along(updated_bug_paths)) {
@@ -122,6 +147,6 @@ for (ii in seq_along(updated_bug_paths)) {
 }
 
 # update the last_exec_date for the next run
-writeLines(format(Sys.time(), '%F', tz = 'UTC'), last_exec_date_file)
+writeLines(format(UTC_DATE), last_exec_date_file)
 fwrite(bugDF, bug_file)
 fwrite(labelDF, label_file)
