@@ -7,7 +7,7 @@ source('utils.R')
 library(gh)
 library(data.table)
 
-options(warn = 2)
+options(warn = 2L)
 check_credentials()
 session = bugzilla_session(URL)
 
@@ -36,9 +36,8 @@ for (ii in seq_along(to_process)) {
   bug = get_bug_data(jump_to(session, paste0(BUG_URL_STEM, bz_id)))
 
   # ---- 2. UPDATE LABEL DATA ----
-  for (tag in TAG_FIELDS) {
-    validate_label_and_update(paste(tag, '-', bug[[tolower(tag)]]), bz_id)
-  }
+  labels = get_labels(bug, TAG_FIELDS)
+  for (label in labels) validate_label_and_update(label, bz_id)
 
   # ---- 3. POST TO GITHUB AND RECORD GITHUB ID ----
   receipt = create_issue(bug)

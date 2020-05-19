@@ -67,6 +67,7 @@ censor = function(x) censor_phone(censor_email(x))
 #       + TODO: LaTeX-style quotes (`...') becomes inline code if there's > 1 [BZ#196]
 #       + TODO: print(matrix) outside quote block --> 4 spaces before colnames,
 #       +       hence interpreted as code block for that line only [BZ#193]
+#       + TODO: #[1-9][0-9]* is interpreted as an issue number [BZ#17756]
 #   + TODO: cross-references like Bug 7988 --> #GH_ID [BZ#7987]
 markdown_convert = function(text) {
   lines = strsplit(text, '\n', fixed = TRUE)[[1L]]
@@ -257,6 +258,20 @@ get_bug_data = function(bug_page) {
   )
   comments = html_nodes(bug_page, xpath = '//div[@id and contains(@class, "bz_comment")]')
 
+  # possible for an issue to have no description/comments, BZ#16834
+  if (length(comments)) {
+    description_info = get_comment_info(comments[[1L]])
+    comment_info = lapply(comments[-1L], get_comment_info)
+  } else {
+    description_info = list(
+      id = NA_character_, author = NA_character_,
+      timestamp = NA_character_,
+      text = '<POST REDACTED>',
+      attachment_title = NA_character_, attachment_href = NA_character_
+    )
+    comment_info = list()
+  }
+
   bug = list(
     id = bz_id,
     summary = censor(get_field(bug_page, 'span', 'short_desc_nonedit_display')),
@@ -288,8 +303,8 @@ get_bug_data = function(bug_page) {
     )),
 
     attachment_info = lapply(attachments, get_attachment_info),
-    description_info = get_comment_info(comments[[1L]]),
-    comment_info = lapply(comments[-1L], get_comment_info)
+    description_info = description_info,
+    comment_info = comment_info
   )
 }
 
@@ -313,11 +328,15 @@ relabel = function(labels) {
   }
   labels
 }
+
+get_labels = function(params, tag_names) {
+  sapply(tag_names, function(nm) relabel(paste(nm, '-', params[[tolower(nm)]])))
+}
+
 # check if we've seen this label. if not, create the label with a random color.
 #   If so, update its observation count. Once a label reaches 10 times observed,
 #   it gets POSTed to GitHub.
 update_label = function(label, bz_id, dryrun = FALSE) {
-  label = relabel(label)
   # this label is known; update its frequency
   if (label %chin% labelDF$name) {
     labelDF[.(name = label), on = 'name', c('n_observed', 'seed_issues') := {
@@ -330,21 +349,11 @@ update_label = function(label, bz_id, dryrun = FALSE) {
              name = name, color = color
           )
           for (seed_issue in strsplit(seed_issues, ',')[[1L]]) {
-            gh_id = bugDF[.(bugzilla_id = as.integer(seed_issue)), on = 'bugzilla_id', github_id]
+            gh_id = bugDF[.(bugzilla_id = as.integer(seed_issue)),
+                          on = 'bugzilla_id', github_id]
             if (is.na(gh_id)) next
             # PATCH will overwrite, so we need to read current issues first & append
-            issue_data = gh(
-              "GET /repos/:owner/:repo/issues/:issue_number",
-              owner = OWNER, repo = REPO,
-              issue_number = gh_id
-            )
-
-            gh(
-              "PATCH /repos/:owner/:repo/issues/:issue_number",
-              owner = OWNER, repo = REPO,
-              issue_number = gh_id,
-              labels = c(sapply(issue_data$labels, `[[`, 'name'), label)
-            )
+            patch_labels(gh_id, label, keep_old = TRUE, dryrun)
           }
         }
       }
@@ -356,6 +365,28 @@ update_label = function(label, bz_id, dryrun = FALSE) {
                  n_observed = 1L, seed_issues = as.character(bz_id))
     )
   }
+}
+
+# labels should be relabel()'d already as input here
+patch_labels = function(gh_id, labels, keep_old = FALSE, dryrun = FALSE) {
+  # PATCH will overwrite, so we need to read current issues first & append
+  if (keep_old) {
+    issue_data = gh(
+      "GET /repos/:owner/:repo/issues/:issue_number",
+      owner = OWNER, repo = REPO,
+      issue_number = gh_id
+    )
+    old_labels = sapply(issue_data$labels, `[[`, 'name')
+  }
+
+  # keep_old & labels may (probably do) overlap
+  labels = unique(c(if (keep_old) old_labels, labels))
+  if (dryrun) return(labels)
+  gh(
+    "PATCH /repos/:owner/:repo/issues/:issue_number",
+    owner = OWNER, repo = REPO,
+    issue_number = gh_id, labels = labels
+  )
 }
 
 validate_label_and_update = function(label, bz_id, flag) {
@@ -507,10 +538,10 @@ create_issue = function(params, dryrun=FALSE) {
     title = sprintf("[BUGZILLA #%d] %s", params$id, params$summary),
     body = build_body(params)
   )
-  labels = paste(TAG_FIELDS, '-', unlist(params[tolower(TAG_FIELDS)]))
+  labels = get_labels(params, TAG_FIELDS)
   labels = labelDF[
-    i = .(name = relabel(labels)),
-    on = 'name', name[n_observed >= 10L]
+    i = .(name = labels), on = 'name',
+    name[n_observed >= 10L]
   ]
   # as.list needed -- length-1 input fails
   if (length(labels)) gh_call$labels = as.list(labels)

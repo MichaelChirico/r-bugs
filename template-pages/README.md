@@ -11,3 +11,4 @@ the web scraping scripts. If the page design changes, the templates should chang
  - `bug-07987.html` is [Bugzilla #7987](https://bugs.r-project.org/bugzilla/show_bug.cgi?id=7987). This contains a reference to an attachment that's not on that bug's page (hence the attachment metadata can't be gleaned from that page alone).
  - [Bugzilla #14005](https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14005) has a massive description (422,283 characters), but GitHub limits issue text to 65,536 characters.
  - `bug-14414.html` is [Bugzilla #14414](https://bugs.r-project.org/bugzilla/show_bug.cgi?id=14414). This contains an attachment that was deleted.
+ - `bug-16834.html` is [Bugzilla #16834](https://bugs.r-project.org/bugzilla/show_bug.cgi?id=16834). This bug was closed as spam and likely the description page has been scrubbed.

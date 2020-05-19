@@ -11,6 +11,12 @@ session = bugzilla_session(URL)
 #   !!  avoid doing this step as much as possible, or adjust   !!
 #   !!  the limit= query parameter in this URL during testing  !!
 bugs = jump_to(session, FULL_BUGLIST_PATH)
+# record when this was done -- we know the universe of reported bugs
+#   up through this date (a timestamp would be more exact...)
+writeLines(
+  format(Sys.time(), '%F', tz = 'UTC'),
+  file.path('data', 'last_exec.date')
+)
 
 # two links to each bug -- one in ID column, the other in Summary;
 #   filtering on td selects the ID column. unique should then be
