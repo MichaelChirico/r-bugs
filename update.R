@@ -146,6 +146,6 @@ for (ii in seq_along(updated_bug_paths)) {
 }
 
 # update the last_exec_date for the next run
-writeLines(as.integer(max(update_timestamps)), last_update_time_file)
+writeLines(as.character(as.integer(max(update_timestamps))), last_update_time_file)
 fwrite(bugDF, bug_file)
 fwrite(labelDF, label_file)
