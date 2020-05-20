@@ -1,7 +1,6 @@
 # INCREMENTAL UPDATES OF ISSUES [[ONLINE]]
 URL = 'https://bugs.r-project.org/bugzilla'
 BUG_URL_STEM = file.path(URL, 'show_bug.cgi?id=')
-UTC_DATE = as.Date(format(Sys.time(), tz = 'UTC'))
 
 source('utils.R')
 library(data.table)
@@ -13,7 +12,7 @@ session = bugzilla_session(URL)
 
 bug_file   = file.path('data', 'known_bugs.csv')
 label_file = file.path('data', 'labels.csv')
-last_exec_date_file = file.path('data', 'last_exec.date')
+last_update_time_file = file.path('data', 'last_update.time')
 
 bugDF   = fread(bug_file, colClasses = c(github_id = 'integer'))
 labelDF =  fread(label_file)
@@ -23,7 +22,7 @@ labelDF =  fread(label_file)
 # there will be some double counting of updated bugs which were updated before
 #   backfill reached them, but after initialize is run, but the issue tracker
 #   isn't massively active, so these edge cases are minimal.
-recent_date = as.POSIXct(as.IDate(readLines(last_exec_date_file)), tz = 'UTC')
+recent_timestamp = .POSIXct(as.integer(readLines(last_update_time_file)), tz = 'UTC')
 
 # built into slightly-more-readable format from the advanced search page results...
 #   NB: earlier, tried building a query URL based on one produced using
@@ -63,7 +62,7 @@ for (fmt in c('%T', '%a %H:%M', '%F')) {
     # find those times that match the %a %H:%M format
     match_dow = !is.na(as.POSIXct(tmp, format = fmt, tz = 'UTC'))
     if (!any(match_dow)) next
-    prev_week = UTC_DATE - 0:6
+    prev_week = as.Date(format(Sys.time(), tz = 'UTC')) - 0:6
     dowDT = data.table(dow = format(prev_week, '%a'), YMD = format(prev_week))
     for (ii in seq_len(nrow(dowDT))) {
       tmp[match_dow] = with(dowDT[ii], gsub(dow, YMD, tmp[match_dow], fixed = TRUE))
@@ -75,7 +74,7 @@ for (fmt in c('%T', '%a %H:%M', '%F')) {
   update_timestamps[unmatched_idx] = timestamp
 }
 
-updated_bug_paths = results[update_timestamps >= recent_date] %>%
+updated_bug_paths = results[update_timestamps > recent_timestamp] %>%
   html_nodes(xpath = './/a[contains(@href, "show_bug.cgi")]') %>%
   html_attr('href') %>% unique
 
@@ -147,6 +146,6 @@ for (ii in seq_along(updated_bug_paths)) {
 }
 
 # update the last_exec_date for the next run
-writeLines(format(UTC_DATE), last_exec_date_file)
+writeLines(as.integer(max(update_timestamps)), last_update_time_file)
 fwrite(bugDF, bug_file)
 fwrite(labelDF, label_file)
