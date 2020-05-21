@@ -27,6 +27,7 @@ jobs:
         env:
           BUGZILLA_USER: ${{ secrets.BUGZILLA_USER }}
           BUGZILLA_PASSWORD: ${{ secrets.BUGZILLA_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: Rscript update.R
 
       - name: Get Date
