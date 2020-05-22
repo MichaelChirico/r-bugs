@@ -32,7 +32,7 @@ jobs:
 
       - name: Get Date
         id: date
-        run: echo "::set-output name=date::$(TZ=UTC date +%Y-%m-%d %H-%M-%S)"
+        run: echo "::set-output name=date::$(TZ=UTC date '+%Y-%m-%d %H:%M:%S')"
 
       - name: Commit new data
         run: |
