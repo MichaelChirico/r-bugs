@@ -74,15 +74,20 @@ for (fmt in c('%T', '%a %H:%M', '%F')) {
   update_timestamps[unmatched_idx] = timestamp
 }
 
-updated_bug_paths = results[update_timestamps > recent_timestamp] %>%
-  html_nodes(xpath = './/a[contains(@href, "show_bug.cgi")]') %>%
-  html_attr('href') %>% unique
+updated_bugs = data.table(
+  path = results %>%
+    html_nodes(xpath = './td/a[contains(@href, "show_bug.cgi")]') %>%
+    html_attr('href'),
+  time = update_timestamps
+)
 
-for (ii in seq_along(updated_bug_paths)) {
-  updated_bug_path = updated_bug_paths[ii]
+# process in chronological order
+updated_bugs = updated_bugs[time > recent_timestamp][order(time)]
+
+for (ii in seq_len(nrow(updated_bugs))) {
+  updated_bug_path = updated_bugs[ii, path]
   bz_id = as.integer(gsub('.*=', '', updated_bug_path))
-  cat('\rProcessing Bugzilla #', bz_id, ', ',
-      length(updated_bug_paths)-ii, ' to go    ', sep = '')
+  cat('\rProcessing Bugzilla #', bz_id, ', ', nrow(updated_bugs)-ii, ' to go    ', sep = '')
   bug = get_bug_data(jump_to(session, file.path(URL, updated_bug_path)))
 
   # ---- 2. UPDATE LABEL DATA ----
