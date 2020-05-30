@@ -76,7 +76,7 @@ for (fmt in c('%T', '%a %H:%M', '%F')) {
 
 updated_bugs = data.table(
   path = results %>%
-    html_nodes(xpath = './td/a[contains(@href, "show_bug.cgi")]') %>%
+    html_nodes(xpath = './td[contains(@class, "bz_id_column")]/a') %>%
     html_attr('href'),
   time = update_timestamps
 )
@@ -125,12 +125,13 @@ for (ii in seq_len(nrow(updated_bugs))) {
     patch_labels(gh_id, labels)
 
     # ---- 3aII. SELECT NEW COMMENTS ----
+    comments = bug$comment_info
     n_old_comments = length(gh(
       "GET /repos/:owner/:repo/issues/:issue_number/comments",
       owner = OWNER, repo = REPO, issue_number = gh_id
     ))
 
-    comments = tail(bug$comment_info, -n_old_comments)
+    if (n_old_comments > 0L) comments = tail(comments, -n_old_comments)
   } else { # this bug is not yet tracked on GitHub -- handled same as in backfill.R
     bugDF = rbind(bugDF, data.table(bugzilla_id = bz_id), fill = TRUE)
     comments = bug$comment_info
