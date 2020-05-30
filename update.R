@@ -104,6 +104,8 @@ for (ii in seq_len(nrow(updated_bugs))) {
   labels = get_labels(bug, TAG_FIELDS)
   for (label in labels) validate_label_and_update(label, bz_id)
 
+  comments = bug$comment_info
+
   # patch an existing issue
   # NB: skipping binary search approach here because this table grows within
   #   this script, so we'd have to re-key the table each time it grows. more
@@ -124,8 +126,7 @@ for (ii in seq_len(nrow(updated_bugs))) {
 
     patch_labels(gh_id, labels)
 
-    # ---- 3aII. SELECT NEW COMMENTS ----
-    comments = bug$comment_info
+    # ---- 3aII. REMOVE OLD COMMENTS ----
     n_old_comments = length(gh(
       "GET /repos/:owner/:repo/issues/:issue_number/comments",
       owner = OWNER, repo = REPO, issue_number = gh_id
@@ -134,7 +135,6 @@ for (ii in seq_len(nrow(updated_bugs))) {
     if (n_old_comments > 0L) comments = tail(comments, -n_old_comments)
   } else { # this bug is not yet tracked on GitHub -- handled same as in backfill.R
     bugDF = rbind(bugDF, data.table(bugzilla_id = bz_id), fill = TRUE)
-    comments = bug$comment_info
 
     # ---- 3bI. POST TO GITHUB AND RECORD GITHUB ID ----
     receipt = create_issue(bug)
