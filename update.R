@@ -155,3 +155,10 @@ for (ii in seq_len(nrow(updated_bugs))) {
 writeLines(as.character(as.integer(max(update_timestamps))), last_update_time_file)
 fwrite(bugDF, bug_file)
 fwrite(labelDF, label_file)
+
+# re-trigger interaction limits for the repo (easiest way to keep
+#   the repo read-only that I know of...)
+gh("PUT /repos/:owner/:repo/interaction-limits",
+   owner = OWNER, repo = REPO, limit = 'collaborators_only',
+   .accept = 'application/vnd.github.sombra-preview'
+)
