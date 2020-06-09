@@ -158,7 +158,8 @@ fwrite(labelDF, label_file)
 
 # re-trigger interaction limits for the repo (easiest way to keep
 #   the repo read-only that I know of...)
-gh("PUT /repos/:owner/:repo/interaction-limits",
-   owner = OWNER, repo = REPO, limit = 'collaborators_only',
-   .accept = 'application/vnd.github.sombra-preview'
-)
+# DOESN'T WORK -- GH blocks Actions bot from doing this...
+# gh("PUT /repos/:owner/:repo/interaction-limits",
+#    owner = OWNER, repo = REPO, limit = 'collaborators_only',
+#    .accept = 'application/vnd.github.sombra-preview'
+# )
