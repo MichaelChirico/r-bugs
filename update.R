@@ -1,14 +1,12 @@
 # INCREMENTAL UPDATES OF ISSUES [[ONLINE]]
-URL = 'https://bugs.r-project.org/bugzilla'
-BUG_URL_STEM = file.path(URL, 'show_bug.cgi?id=')
+BUG_REST_URL = 'https://bugs.r-project.org/bugzilla/rest/bug'
 
 source('utils.R')
+library(httr)
 library(data.table)
 library(gh)
 
 options(warn = 2L)
-check_credentials()
-session = bugzilla_session(URL)
 
 bug_file   = file.path('data', 'known_bugs.csv')
 label_file = file.path('data', 'labels.csv')
@@ -33,58 +31,18 @@ statuses = c(
   'UNCONFIRMED', 'NEW', 'WISH', 'ASSIGNED',
   'REOPENED', 'RESOLVED', 'VERIFIED', 'CLOSED'
 )
-updated_bug_url = paste0(
-  file.path(URL, 'buglist.cgi?'),
-  paste(collapse = '&', c(
-    paste0('bug_status=', statuses),
-    'order=bugs.delta_ts%20desc',
-    'query_format=advanced'
-  ))
+query = c(
+  setNames(as.list(statuses), rep('status', length(statuses))),
+  list(last_change_time = format(recent_timestamp - 10*86400), limit = 0L)
 )
 
-# multiple links to each bug in each search result row -- we _could_
-#   test that the text() is a number: string(number(text())) != "NaN" --
-#   but this is overkill for a small set of results. Just use unique & move on
-#   tr[td] -> exclude header row, which doesn't have td children
-results = jump_to(session, updated_bug_url) %>%
-  html_nodes(xpath = '//table[@class="bz_buglist"]/tr[td]')
-update_times = results %>%
-  html_node(xpath = 'td[@class="bz_changeddate_column nowrap"]') %>%
-  html_text_clean
+updated_bugs = content(GET(BUG_REST_URL, query = query))[[1L]]
+updated_order = order(as.POSIXct(
+  sapply(updated_bugs, `[[`, 'last_change_time'), tz = 'UTC', format = '%FT%TZ'
+))
 
-update_timestamps = .POSIXct(rep(NA_real_, length(update_times)), tz = 'UTC')
-for (fmt in c('%T', '%a %H:%M', '%F')) {
-  unmatched_idx = is.na(update_timestamps)
-  # as.POSIXct doesn't infer the correct date here (it does for the other fmts)
-  if (fmt == '%a %H:%M') {
-    # keep this so as not to update the original
-    tmp = update_times[unmatched_idx]
-    # find those times that match the %a %H:%M format
-    match_dow = !is.na(as.POSIXct(tmp, format = fmt, tz = 'UTC'))
-    if (!any(match_dow)) next
-    prev_week = as.Date(format(Sys.time(), tz = 'UTC')) - 0:6
-    dowDT = data.table(dow = format(prev_week, '%a'), YMD = format(prev_week))
-    for (ii in seq_len(nrow(dowDT))) {
-      tmp[match_dow] = with(dowDT[ii], gsub(dow, YMD, tmp[match_dow], fixed = TRUE))
-    }
-    timestamp = as.POSIXct(tmp, '%F %H:%M', tz = 'UTC')
-  } else {
-    timestamp = as.POSIXct(update_times[unmatched_idx], format = fmt, tz = 'UTC')
-  }
-  update_timestamps[unmatched_idx] = timestamp
-}
-
-updated_bugs = data.table(
-  path = results %>%
-    html_nodes(xpath = './td[contains(@class, "bz_id_column")]/a') %>%
-    html_attr('href'),
-  time = update_timestamps
-)
-
-# process in chronological order
-updated_bugs = updated_bugs[time > recent_timestamp][order(time)]
-
-for (ii in seq_len(nrow(updated_bugs))) {
+for (ii in seq_along(updated_bugs)) {
+  bug = get_bug_data(updated_bugs[[updated_order[ii]]])
   updated_bug_path = updated_bugs[ii, path]
   bz_id = as.integer(gsub('.*=', '', updated_bug_path))
   cat('\rProcessing Bugzilla #', bz_id, ', ', nrow(updated_bugs)-ii, ' to go    ', sep = '')
