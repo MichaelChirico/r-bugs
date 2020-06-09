@@ -42,10 +42,12 @@ updated_order = order(as.POSIXct(
 ))
 
 for (ii in seq_along(updated_bugs)) {
-  bug = get_bug_data(updated_bugs[[updated_order[ii]]])
+  bug = updated_bugs[[updated_order[ii]]]
+  bz_id =
+  cat('\rProcessing Bugzilla #', bz_id, ', ', nrow(updated_bugs)-ii, ' to go    ', sep = '')
+  bug_data = get_bug_data(bug)
   updated_bug_path = updated_bugs[ii, path]
   bz_id = as.integer(gsub('.*=', '', updated_bug_path))
-  cat('\rProcessing Bugzilla #', bz_id, ', ', nrow(updated_bugs)-ii, ' to go    ', sep = '')
   bug = get_bug_data(jump_to(session, file.path(URL, updated_bug_path)))
 
   # ---- 2. UPDATE LABEL DATA ----
