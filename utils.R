@@ -13,6 +13,8 @@ force_scalar_character = function(x, allow_empty = TRUE) {
   return(invisible())
 }
 
+from_iso8601 = function(x) as.POSIXct(x, tz = 'UTC', format = '%FT%TZ')
+
 # ---- TEXT FORMATTING UTILITIES ----
 # strip several kinds of whitespace
 clean_ws = function(x, replace_newline = TRUE, replace_nbsp = TRUE, collapse_ws = TRUE) {
@@ -44,6 +46,7 @@ censor_email = function(s) {
 #    constructions like that in BZ#3, where two numbers are coupled over two lines
 # TODO: fix case like BZ#135, where "ph.ven" is part of the description & caught as phone #
 censor_phone = function(x) {
+  if (!length(x)) return ('')
   lines = strsplit(x, '\n', fixed = TRUE)[[1L]]
   for (ii in seq_along(lines)) {
     if (grepl('\\b(?:tel|fax|phone|ph)\\b', lines[ii], ignore.case = TRUE)) {
@@ -248,64 +251,26 @@ get_comment_info = function(c) {
 }
 
 # workhorse scraping function
-get_bug_data = function(bug_page) {
-  # column of metadata on the LHS; filtering down first to this sub-node
-  #   speeds up the repeated queries of its children substantially [~4x]
-  meta_table = html_node(bug_page, xpath = '//td[@id="bz_show_bug_column_1"]')
-  time_table = html_node(bug_page, xpath = '//td[@id="bz_show_bug_column_2"]')
-  attachments = html_nodes(bug_page,
-    xpath = '//table[@id="attachment_table"]//tr[number(substring-after(@id, "a")) > 0]'
-  )
-  comments = html_nodes(bug_page, xpath = '//div[@id and contains(@class, "bz_comment")]')
+get_bug_data = function(bug) {
+  attachments = content(GET(file.path(BUG_REST_URL, bug$id, 'attachment')))$bugs[[c(1L, 1L)]]
+  comments = content(GET(file.path(BUG_REST_URL, bug$id, 'comment')))$bugs[[c(1L, 1L)]]
 
-  # possible for an issue to have no description/comments, BZ#16834
-  if (length(comments)) {
-    description_info = get_comment_info(comments[[1L]])
-    comment_info = lapply(comments[-1L], get_comment_info)
-  } else {
-    description_info = list(
-      id = NA_character_, author = NA_character_,
-      timestamp = NA_character_,
-      text = '<POST REDACTED>',
-      attachment_title = NA_character_, attachment_href = NA_character_
-    )
-    comment_info = list()
-  }
+  bug_data = bug[c('id', 'status', 'alias', 'component', 'version', 'url')]
+  # censor returns '' if the issue has no description/comments, BZ#16834
+  bug_data$summary = censor(comments[[1L]]$text)
+  bug_data$hardware = paste(bug$platform, bug$op_sys, sep = ' / ')
+  bug_data$importance = paste(bug$priority, bug$severity, sep = ' / ')
+  bug_data$assignee = bug$assigned_to_detail$real_name
+  bug_data$depends_on = as.integer(unlist(bug$depends_on)) #a s.integer(NULL)->integer()
+  bug_data$blocks = as.integer(unlist(bug$blocks))
+  bug_data$reported_info = format(from_iso8601(bug$creation_time))
+  bug_data$modified_info = format(from_iso8601(bug$last_change_time))
 
-  bug = list(
-    id = bz_id,
-    summary = censor(get_field(bug_page, 'span', 'short_desc_nonedit_display')),
+  bug_data$description_info = get_comment_info(comments[[1L]])
+  bug_data$comment_info = lapply(comments[-1L], get_comment_info)
+  bug_data$attachment_info = lapply(attachments, get_attachment_info)
 
-    status = get_field(meta_table, 'span', 'static_bug_status'),
-    alias = get_field(meta_table, 'tr/td', 'field_tablerow_alias'),
-    component = clean_ws(gsub(
-      '(show other bugs)', '', fixed = TRUE,
-      get_field(meta_table, 'td', 'field_container_component', clean = FALSE)
-    )),
-    version = get_field(meta_table, 'tr/td', 'field_tablerow_version'),
-    hardware = get_field(meta_table, 'tr/td', 'field_tablerow_rep_platform'),
-    importance = get_field(meta_table, 'tr/td', 'field_tablerow_importance'),
-    assignee = get_field(meta_table, 'tr/td', 'field_tablerow_assigned_to'),
-    url = get_field(meta_table, 'span', 'bz_url_input_area'),
-    depends_on = as.integer(html_nodes_clean(
-      html_node(meta_table, xpath = './/tr[@id="field_tablerow_dependson"]/td'),
-      xpath = './a'
-    )),
-    blocks = as.integer(html_nodes_clean(
-      html_node(meta_table, xpath = './/tr/th[@id="field_label_blocked"]'),
-      xpath = './parent::node()/td/a'
-    )),
-
-    reported_info = get_field(time_table, 'tr/td', 'field_tablerow_reported'),
-    modified_info = clean_ws(gsub(
-      '(History)', '', fixed = TRUE,
-      get_field(time_table, 'tr/td', 'field_tablerow_modified', clean = FALSE)
-    )),
-
-    attachment_info = lapply(attachments, get_attachment_info),
-    description_info = description_info,
-    comment_info = comment_info
-  )
+  bug_data
 }
 
 # ---- MIRRORING UTILITIES ----

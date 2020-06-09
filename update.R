@@ -37,18 +37,13 @@ query = c(
 )
 
 updated_bugs = content(GET(BUG_REST_URL, query = query))[[1L]]
-updated_order = order(as.POSIXct(
-  sapply(updated_bugs, `[[`, 'last_change_time'), tz = 'UTC', format = '%FT%TZ'
-))
+updated_order = order(from_iso8601(sapply(updated_bugs, `[[`, 'last_change_time')))
 
 for (ii in seq_along(updated_bugs)) {
   bug = updated_bugs[[updated_order[ii]]]
-  bz_id =
-  cat('\rProcessing Bugzilla #', bz_id, ', ', nrow(updated_bugs)-ii, ' to go    ', sep = '')
+  bz_id = bug$id
+  cat('\rProcessing Bugzilla #', bz_id, ', ', length(updated_bugs)-ii, ' to go    ', sep = '')
   bug_data = get_bug_data(bug)
-  updated_bug_path = updated_bugs[ii, path]
-  bz_id = as.integer(gsub('.*=', '', updated_bug_path))
-  bug = get_bug_data(jump_to(session, file.path(URL, updated_bug_path)))
 
   # ---- 2. UPDATE LABEL DATA ----
   # don't check if labels have changed -- just PATCH all labels at once.
@@ -61,7 +56,7 @@ for (ii in seq_along(updated_bugs)) {
   #   eventually -- this will cause an error when that label attempts to
   #   create itself again if the number bubbles up again.
   # be sure to get old_labels _before_ patching
-  labels = get_labels(bug, TAG_FIELDS)
+  labels = get_labels(bug_data, TAG_FIELDS)
   for (label in labels) validate_label_and_update(label, bz_id)
 
   comments = bug$comment_info
