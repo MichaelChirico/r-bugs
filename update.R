@@ -1,5 +1,6 @@
 # INCREMENTAL UPDATES OF ISSUES [[ONLINE]]
-BUG_REST_URL = 'https://bugs.r-project.org/bugzilla/rest/bug'
+REST_URL = 'https://bugs.r-project.org/bugzilla/rest'
+BUGZILLA_LOGGED_IN = FALSE
 
 source('utils.R')
 library(httr)
@@ -36,7 +37,7 @@ query = c(
   list(last_change_time = format(recent_timestamp - 10*86400), limit = 0L)
 )
 
-updated_bugs = content(GET(BUG_REST_URL, query = query))[[1L]]
+updated_bugs = content(GET(file.path(REST_URL, 'bug'), query = query))[[1L]]
 updated_order = order(from_iso8601(sapply(updated_bugs, `[[`, 'last_change_time')))
 
 for (ii in seq_along(updated_bugs)) {
@@ -110,6 +111,8 @@ for (ii in seq_along(updated_bugs)) {
 writeLines(as.character(as.integer(max(update_timestamps))), last_update_time_file)
 fwrite(bugDF, bug_file)
 fwrite(labelDF, label_file)
+
+if (BUGZILLA_LOGGED_IN) bugzilla_logout()
 
 # re-trigger interaction limits for the repo (easiest way to keep
 #   the repo read-only that I know of...)

@@ -139,24 +139,32 @@ check_credentials = function() {
   return(invisible())
 }
 
-# begin a session in bugzilla & log in
-bugzilla_session = function(URL = 'https://bugs.r-project.org/bugzilla') {
-  session = html_session(URL)
-
-  # the login form at the top of the page behind "login" button
-  login = Filter(
-    function(x) x$name == 'mini_login_top',
-    html_form(session)
-  )
-
+bugzilla_login = function() {
   u_p = Sys.getenv(c('BUGZILLA_USER', 'BUGZILLA_PASSWORD'))
-  # form IDs by manual inspection
-  submit_form(
-    session,
-    set_values(login[[1L]], Bugzilla_login = u_p[1L], Bugzilla_password = u_p[2L])
-  )
+  query = list(login = u_p[1L], password = u_p[2L])
+  BUGZILLA_TOKEN <<- content(GET(file.path(REST_URL, 'login'), query = query))$token
+  return(invisible())
+}
 
-  return(session)
+bugzilla_logout = function() {
+  GET(file.path(REST_URL, 'logout'), query = list(token = BUGZILLA_TOKEN))
+}
+
+# use lookup table to match the ID returned by creator field in REST API to a real name,
+#   or,  hit the user endpoint to match this to a real name
+get_real_name = function(name) {
+  if (!length(real_name <- users[.(name), real_name, nomatch=NULL])) {
+    if (!BUGZILLA_LOGGED_IN) bugzilla_login()
+    query = list(match = name, token = BUGZILLA_TOKEN, include_disabled='true')
+    matches = content(GET(file.path(REST_URL, 'user'), query=query))$users
+    if (length(matches) != 1L) stop("Unable to uniquely identify unknown user...")
+    user = setDT(matches[[1L]][c('id', 'name', 'real_name')])
+    user[ , name := gsub('@.*', '', name)]
+    users <<- rbind(users, user)
+    setkey(users, name)
+    real_name = user$real_name
+  }
+  real_name
 }
 
 # wrapper for html_text %>% clean
@@ -230,7 +238,8 @@ get_attachment_info = function(a) {
 }
 
 # helper for getting comment metadata from a page
-get_comment_info = function(c) {
+get_comment_info = function(comment) {
+
   list(
     id = html_attr(c, "id"),
     author = html_node_clean(c, './/span[@class="bz_comment_user"]'),
